@@ -4,13 +4,10 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { updateUserSchema } from "@/lib/validations"
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
-
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(
+  request: NextRequest, 
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -58,7 +55,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+  request: NextRequest, 
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -144,7 +144,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest, 
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     

@@ -5,13 +5,10 @@ import { prisma } from "@/lib/prisma"
 import { resetUserPasswordSchema } from "@/lib/validations"
 import bcrypt from "bcryptjs"
 
-interface RouteParams {
-  params: {
-    id: string
-  }
-}
-
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authOptions)
     
