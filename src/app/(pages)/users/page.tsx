@@ -95,7 +95,7 @@ export default function UsersPage() {
       } else {
         toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
       }
-    } catch (error) {
+    } catch {
       toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
     } finally {
       setLoading(false)
