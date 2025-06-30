@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                    String                 @id @default(cuid())
+  username              String                 @unique
+  name                  String?
+  email                 String?                @unique
+  password              String?
+  role                  UserRole               @default(USER)
+  isActive              Boolean                @default(true)
+  passwordResetToken    String?                @unique
+  passwordResetExpires  DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  accounts              Account[]
+  sessions              Session[]
+  shifts                Shift[]
+  debtorRecords         DebtorRecord[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model FuelType {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  code        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  tanks       Tank[]
+  dispensers  Dispenser[]
+  products    Product[]
+}
+
+model Tank {
+  id          String    @id @default(cuid())
+  name        String
+  code        String    @unique
+  capacity    Float
+  currentLevel Float    @default(0)
+  minLevel    Float     @default(0)
+  maxLevel    Float?
+  fuelTypeId  String
+  isActive    Boolean   @default(true)
+  location    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  fuelType    FuelType  @relation(fields: [fuelTypeId], references: [id])
+  dispensers  Dispenser[]
+}
+
+model Dispenser {
+  id         String   @id @default(cuid())
+  name       String
+  code       String   @unique
+  tankId     String
+  fuelTypeId String
+  isActive   Boolean  @default(true)
+  location   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tank       Tank     @relation(fields: [tankId], references: [id])
+  fuelType   FuelType @relation(fields: [fuelTypeId], references: [id])
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  code        String    @unique
+  description String?
+  price       Float
+  cost        Float?
+  fuelTypeId  String?
+  category    String?
+  isActive    Boolean   @default(true)
+  stockQuantity Int     @default(0)
+  minStock    Int       @default(0)
+  unit        String    @default("ลิตร")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  fuelType    FuelType? @relation(fields: [fuelTypeId], references: [id])
+}
+
+model Shift {
+  id          String   @id @default(cuid())
+  name        String
+  startTime   DateTime
+  endTime     DateTime?
+  userId      String
+  status      ShiftStatus @default(ACTIVE)
+  notes       String?
+  totalSales  Float       @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id])
+}
+
+model DebtorRecord {
+  id          String        @id @default(cuid())
+  customerName String
+  customerPhone String?
+  customerEmail String?
+  amount      Float
+  description String?
+  dueDate     DateTime?
+  status      DebtorStatus  @default(PENDING)
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdBy   User          @relation(fields: [createdById], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum ShiftStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum DebtorStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
