@@ -46,14 +46,14 @@ export default function RegisterPage() {
           router.push('/auth/login')
         }, 2000)
       }
-    } catch (error) {
+    } catch {
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อ')
     } finally {
       setIsLoading(false)
     }
   }
 
-  return (
+    return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">

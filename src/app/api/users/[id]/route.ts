@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { updateUserSchema, resetUserPasswordSchema } from "@/lib/validations"
-import bcrypt from "bcryptjs"
+import { updateUserSchema } from "@/lib/validations"
 
 interface RouteParams {
   params: {

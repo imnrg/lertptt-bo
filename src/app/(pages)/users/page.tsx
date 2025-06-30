@@ -22,7 +22,6 @@ import {
 import { toast } from 'react-hot-toast'
 import { 
   CreateUserFormData, 
-  UpdateUserFormData, 
   ResetUserPasswordFormData,
   createUserSchema,
   updateUserSchema,
@@ -120,10 +119,10 @@ export default function UsersPage() {
         setFormData({ role: 'USER', isActive: true })
         fetchUsers()
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาดในการสร้างผู้ใช้')
+        const errorData = await response.json()
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการสร้างผู้ใช้')
       }
-    } catch (error) {
+    } catch {
       toast.error('ข้อมูลไม่ถูกต้อง')
     }
   }
@@ -148,10 +147,10 @@ export default function UsersPage() {
         setFormData({ role: 'USER', isActive: true })
         fetchUsers()
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาดในการแก้ไขผู้ใช้')
+        const errorData = await response.json()
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการแก้ไขผู้ใช้')
       }
-    } catch (error) {
+    } catch {
       toast.error('ข้อมูลไม่ถูกต้อง')
     }
   }
@@ -168,10 +167,10 @@ export default function UsersPage() {
         toast.success('ลบผู้ใช้สำเร็จ')
         fetchUsers()
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้')
+        const errorData = await response.json()
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้')
       }
-    } catch (error) {
+    } catch {
       toast.error('เกิดข้อผิดพลาดในการลบผู้ใช้')
     }
   }
@@ -186,10 +185,10 @@ export default function UsersPage() {
         toast.success(`${user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}ผู้ใช้สำเร็จ`)
         fetchUsers()
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้')
+        const errorData = await response.json()
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้')
       }
-    } catch (error) {
+    } catch {
       toast.error('เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้')
     }
   }
@@ -213,10 +212,10 @@ export default function UsersPage() {
         setSelectedUser(null)
         setResetPasswordData({})
       } else {
-        const error = await response.json()
-        toast.error(error.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน')
+        const errorData = await response.json()
+        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน')
       }
-    } catch (error) {
+    } catch {
       toast.error('ข้อมูลไม่ถูกต้อง')
     }
   }
