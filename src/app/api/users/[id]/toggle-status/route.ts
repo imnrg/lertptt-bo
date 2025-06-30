@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma"
 
 export async function PATCH(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const session = await getServerSession(authOptions)
     
     if (!session || session.user.role !== "ADMIN") {
@@ -19,7 +20,7 @@ export async function PATCH(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -30,7 +31,7 @@ export async function PATCH(
     }
 
     // Prevent toggling self
-    if (params.id === session.user.id) {
+    if (id === session.user.id) {
       return NextResponse.json(
         { error: "ไม่สามารถเปลี่ยนสถานะบัญชีของตนเองได้" },
         { status: 400 }
@@ -39,7 +40,7 @@ export async function PATCH(
 
     // Toggle user status
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         isActive: !existingUser.isActive,
       },

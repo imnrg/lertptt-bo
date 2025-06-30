@@ -6,9 +6,10 @@ import { updateUserSchema } from "@/lib/validations"
 
 export async function GET(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const session = await getServerSession(authOptions)
     
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: {
         id: true,
         username: true,
@@ -57,9 +58,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const session = await getServerSession(authOptions)
     
     if (!session || session.user.role !== "ADMIN") {
@@ -74,7 +76,7 @@ export async function PUT(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -114,7 +116,7 @@ export async function PUT(
 
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         username,
         name,
@@ -146,9 +148,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest, 
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const session = await getServerSession(authOptions)
     
     if (!session || session.user.role !== "ADMIN") {
@@ -160,7 +163,7 @@ export async function DELETE(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -171,7 +174,7 @@ export async function DELETE(
     }
 
     // Prevent deleting self
-    if (params.id === session.user.id) {
+    if (id === session.user.id) {
       return NextResponse.json(
         { error: "ไม่สามารถลบบัญชีของตนเองได้" },
         { status: 400 }
@@ -180,7 +183,7 @@ export async function DELETE(
 
     // Delete user
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: "ลบผู้ใช้สำเร็จ" })

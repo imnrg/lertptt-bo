@@ -7,9 +7,10 @@ import bcrypt from "bcryptjs"
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params
     const session = await getServerSession(authOptions)
     
     if (!session || session.user.role !== "ADMIN") {
@@ -24,7 +25,7 @@ export async function PATCH(
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!existingUser) {
@@ -39,7 +40,7 @@ export async function PATCH(
 
     // Update user password
     await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         password: hashedPassword,
       }
