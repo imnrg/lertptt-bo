@@ -24,7 +24,7 @@ export async function GET() {
     // Create admin user
     const hashedPassword = await bcrypt.hash('admin123', 12)
     
-    const adminUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         username: 'admin',
         name: 'ผู้ดูแลระบบ',
