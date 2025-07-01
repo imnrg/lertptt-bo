@@ -4,24 +4,20 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-export async function POST() {
+export async function GET() {
   try {
-    // Check if admin user already exists
-    const existingAdmin = await prisma.user.findFirst({
+    // Check if any admin user already exists
+    const adminCount = await prisma.user.count({
       where: {
         role: 'ADMIN'
       }
     })
 
-    if (existingAdmin) {
+    if (adminCount > 0) {
       return NextResponse.json({
         success: false,
-        message: 'ผู้ดูแลระบบมีอยู่แล้ว',
-        user: {
-          username: existingAdmin.username,
-          name: existingAdmin.name,
-          email: existingAdmin.email
-        }
+        message: 'ระบบมีผู้ดูแลแล้ว ไม่สามารถสร้างใหม่ได้',
+        adminCount
       })
     }
 
@@ -40,7 +36,7 @@ export async function POST() {
     })
 
     // Create some sample fuel types
-    const fuelTypes = await prisma.fuelType.createMany({
+    await prisma.fuelType.createMany({
       data: [
         {
           name: 'เบนซิน 95',
@@ -72,20 +68,13 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: 'สร้างข้อมูลเริ่มต้นสำเร็จ',
-      data: {
-        admin: {
-          username: adminUser.username,
-          name: adminUser.name,
-          email: adminUser.email,
-          role: adminUser.role
-        },
-        fuelTypesCreated: fuelTypes.count
-      },
+      message: '🎉 สร้างข้อมูลเริ่มต้นสำเร็จ!',
       credentials: {
         username: 'admin',
-        password: 'admin123'
-      }
+        password: 'admin123',
+        loginUrl: '/auth/login'
+      },
+      note: 'กรุณาเปลี่ยนรหัสผ่านหลังจากเข้าสู่ระบบครั้งแรก'
     })
 
   } catch (error) {
@@ -98,4 +87,9 @@ export async function POST() {
   } finally {
     await prisma.$disconnect()
   }
+}
+
+// Keep POST method for backward compatibility
+export async function POST() {
+  return GET()
 }
