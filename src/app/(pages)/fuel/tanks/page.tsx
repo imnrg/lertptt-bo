@@ -1,155 +1,431 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Edit, Trash2, AlertTriangle } from 'lucide-react'
-import Link from 'next/link'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 
-// Mock data
-const tanks = [
-  {
-    id: '1',
-    name: 'ถังเก็บ A1',
-    code: 'TANK-A1',
-    capacity: 10000,
-    currentLevel: 7500,
-    minLevel: 1000,
-    fuelType: 'เบนซิน 95',
-    location: 'พื้นที่ A',
-    isActive: true,
-    createdAt: '2024-01-15',
-  },
-  {
-    id: '2',
-    name: 'ถังเก็บ B1',
-    code: 'TANK-B1',
-    capacity: 8000,
-    currentLevel: 3600,
-    minLevel: 800,
-    fuelType: 'เบนซิน 91',
-    location: 'พื้นที่ B',
-    isActive: true,
-    createdAt: '2024-01-15',
-  },
-  {
-    id: '3',
-    name: 'ถังเก็บ C1',
-    code: 'TANK-C1',
-    capacity: 12000,
-    currentLevel: 10200,
-    minLevel: 1200,
-    fuelType: 'ดีเซล',
-    location: 'พื้นที่ C',
-    isActive: true,
-    createdAt: '2024-01-15',
-  },
-]
-
-const getStatusColor = (currentLevel: number, minLevel: number, capacity: number) => {
-  const percentage = (currentLevel / capacity) * 100
-  if (percentage <= 20) return 'bg-red-100 text-red-800'
-  if (percentage <= 40) return 'bg-yellow-100 text-yellow-800'
-  return 'bg-green-100 text-green-800'
+interface Tank {
+  id: string
+  name: string
+  code: string
+  capacity: number
+  currentLevel: number
+  minLevel: number
+  maxLevel?: number
+  fuelTypeId: string
+  isActive: boolean
+  location?: string
+  fuelType: {
+    id: string
+    name: string
+    code: string
+  }
+  dispensers: Array<{
+    id: string
+    name: string
+    code: string
+    isActive: boolean
+  }>
+  _count: {
+    dispensers: number
+  }
 }
 
-const getStatusText = (currentLevel: number, minLevel: number, capacity: number) => {
-  const percentage = (currentLevel / capacity) * 100
-  if (percentage <= 20) return 'เตือน'
-  if (percentage <= 40) return 'ต่ำ'
-  return 'ปกติ'
+interface FuelType {
+  id: string
+  name: string
+  code: string
+  isActive: boolean
 }
 
 export default function TanksPage() {
+  const [tanks, setTanks] = useState<Tank[]>([])
+  const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingTank, setEditingTank] = useState<Tank | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    capacity: 0,
+    currentLevel: 0,
+    minLevel: 0,
+    maxLevel: 0,
+    fuelTypeId: '',
+    location: '',
+    isActive: true
+  })
+
+  useEffect(() => {
+    fetchTanks()
+    fetchFuelTypes()
+  }, [])
+
+  const fetchTanks = async () => {
+    try {
+      const response = await fetch('/api/fuel/tanks')
+      if (response.ok) {
+        const data = await response.json()
+        setTanks(data)
+      }
+    } catch (error) {
+      console.error('Error fetching tanks:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchFuelTypes = async () => {
+    try {
+      const response = await fetch('/api/fuel/types')
+      if (response.ok) {
+        const data = await response.json()
+        setFuelTypes(data.filter((ft: FuelType) => ft.isActive))
+      }
+    } catch (error) {
+      console.error('Error fetching fuel types:', error)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const url = editingTank 
+        ? `/api/fuel/tanks/${editingTank.id}`
+        : '/api/fuel/tanks'
+      
+      const method = editingTank ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          capacity: Number(formData.capacity),
+          currentLevel: Number(formData.currentLevel),
+          minLevel: Number(formData.minLevel),
+          maxLevel: formData.maxLevel ? Number(formData.maxLevel) : undefined,
+        }),
+      })
+
+      if (response.ok) {
+        await fetchTanks()
+        handleCloseForm()
+        alert(editingTank ? 'แก้ไขถังสำเร็จ' : 'เพิ่มถังสำเร็จ')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch (error) {
+      console.error('Error saving tank:', error)
+      alert('เกิดข้อผิดพลาด')
+    }
+  }
+
+  const handleEdit = (tank: Tank) => {
+    setEditingTank(tank)
+    setFormData({
+      name: tank.name,
+      code: tank.code,
+      capacity: tank.capacity,
+      currentLevel: tank.currentLevel,
+      minLevel: tank.minLevel,
+      maxLevel: tank.maxLevel || 0,
+      fuelTypeId: tank.fuelTypeId,
+      location: tank.location || '',
+      isActive: tank.isActive
+    })
+    setShowForm(true)
+  }
+
+  const handleDelete = async (tank: Tank) => {
+    if (!confirm(`คุณต้องการลบถัง "${tank.name}" หรือไม่?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/fuel/tanks/${tank.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        await fetchTanks()
+        alert('ลบถังสำเร็จ')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'เกิดข้อผิดพลาด')
+      }
+    } catch (error) {
+      console.error('Error deleting tank:', error)
+      alert('เกิดข้อผิดพลาด')
+    }
+  }
+
+  const handleCloseForm = () => {
+    setShowForm(false)
+    setEditingTank(null)
+    setFormData({
+      name: '',
+      code: '',
+      capacity: 0,
+      currentLevel: 0,
+      minLevel: 0,
+      maxLevel: 0,
+      fuelTypeId: '',
+      location: '',
+      isActive: true
+    })
+  }
+
+  const calculateFillPercentage = (current: number, capacity: number) => {
+    return (current / capacity) * 100
+  }
+
+  if (loading) {
+    return <div className="p-6">กำลังโหลด...</div>
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">จัดการถังเก็บ</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            จัดการถังเก็บน้ำมันและตรวจสอบระดับน้ำมัน
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/fuel/tanks/new">
-            <Plus className="mr-2 h-4 w-4" />
-            เพิ่มถังเก็บ
-          </Link>
+        <h1 className="text-2xl font-bold">จัดการถังเก็บน้ำมัน</h1>
+        <Button onClick={() => setShowForm(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          เพิ่มถัง
         </Button>
       </div>
 
-      {/* Tanks Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>รายการถังเก็บน้ำมัน</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>รหัส</TableHead>
-                <TableHead>ชื่อถัง</TableHead>
-                <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                <TableHead>ความจุ (ลิตร)</TableHead>
-                <TableHead>ระดับปัจจุบัน</TableHead>
-                <TableHead>สถานะ</TableHead>
-                <TableHead>ตำแหน่ง</TableHead>
-                <TableHead>การจัดการ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tanks.map((tank) => {
-                const percentage = (tank.currentLevel / tank.capacity) * 100
-                return (
-                  <TableRow key={tank.id}>
-                    <TableCell className="font-medium">{tank.code}</TableCell>
-                    <TableCell>{tank.name}</TableCell>
-                    <TableCell>{tank.fuelType}</TableCell>
-                    <TableCell>{tank.capacity.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span>{tank.currentLevel.toLocaleString()} ลิตร</span>
-                          <span>{percentage.toFixed(1)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${
-                              percentage <= 20 ? 'bg-red-500' : 
-                              percentage <= 40 ? 'bg-yellow-500' : 'bg-green-500'
-                            }`}
-                            style={{width: `${percentage}%`}}
-                          ></div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
-                        getStatusColor(tank.currentLevel, tank.minLevel, tank.capacity)
-                      }`}>
-                        {percentage <= 20 && <AlertTriangle className="w-3 h-3 mr-1" />}
-                        {getStatusText(tank.currentLevel, tank.minLevel, tank.capacity)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{tank.location}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/fuel/tanks/${tank.id}/edit`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Form Modal */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {editingTank ? 'แก้ไขถัง' : 'เพิ่มถัง'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">ชื่อถัง</label>
+                  <Input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="เช่น ถังที่ 1"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">รหัสถัง</label>
+                  <Input
+                    type="text"
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    placeholder="เช่น TANK_01"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">ประเภทเชื้อเพลิง</label>
+                <Select
+                  value={formData.fuelTypeId}
+                  onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกประเภทเชื้อเพลิง" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fuelTypes.map((fuelType) => (
+                      <SelectItem key={fuelType.id} value={fuelType.id}>
+                        {fuelType.name} ({fuelType.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">ความจุ (ลิตร)</label>
+                  <Input
+                    type="number"
+                    value={formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) })}
+                    placeholder="50000"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">ระดับปัจจุบัน (ลิตร)</label>
+                  <Input
+                    type="number"
+                    value={formData.currentLevel}
+                    onChange={(e) => setFormData({ ...formData, currentLevel: Number(e.target.value) })}
+                    placeholder="25000"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">ระดับขั้นต่ำ (ลิตร)</label>
+                  <Input
+                    type="number"
+                    value={formData.minLevel}
+                    onChange={(e) => setFormData({ ...formData, minLevel: Number(e.target.value) })}
+                    placeholder="5000"
+                    required
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">ระดับสูงสุด (ลิตร)</label>
+                  <Input
+                    type="number"
+                    value={formData.maxLevel}
+                    onChange={(e) => setFormData({ ...formData, maxLevel: Number(e.target.value) })}
+                    placeholder="48000"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">ตำแหน่ง</label>
+                  <Input
+                    type="text"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="โซน 1"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isActive"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                />
+                <label htmlFor="isActive" className="text-sm font-medium">เปิดใช้งาน</label>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="submit">
+                  {editingTank ? 'บันทึกการแก้ไข' : 'เพิ่มถัง'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleCloseForm}>
+                  ยกเลิก
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tank Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {tanks.map((tank) => {
+          const fillPercentage = calculateFillPercentage(tank.currentLevel, tank.capacity)
+          const isLowLevel = tank.currentLevel <= tank.minLevel
+          
+          return (
+            <Card key={tank.id} className={`${isLowLevel ? 'border-red-300 bg-red-50' : ''}`}>
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{tank.name}</CardTitle>
+                    <p className="text-sm text-gray-600">{tank.code}</p>
+                    <p className="text-sm text-blue-600">{tank.fuelType.name}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(tank)}>
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      onClick={() => handleDelete(tank)}
+                      disabled={tank._count.dispensers > 0}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>ระดับน้ำมัน</span>
+                    <span>{fillPercentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className={`h-3 rounded-full ${
+                        isLowLevel ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${Math.min(fillPercentage, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-600 mt-1">
+                    <span>{tank.currentLevel.toLocaleString()} ลิตร</span>
+                    <span>{tank.capacity.toLocaleString()} ลิตร</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-600">ขั้นต่ำ:</span>
+                    <span className="ml-1">{tank.minLevel.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">สูงสุด:</span>
+                    <span className="ml-1">{tank.maxLevel?.toLocaleString() || '-'}</span>
+                  </div>
+                </div>
+
+                <div className="text-sm">
+                  <span className="text-gray-600">หัวจ่าย:</span>
+                  <span className="ml-1">{tank._count.dispensers} ตัว</span>
+                </div>
+
+                {tank.location && (
+                  <div className="text-sm">
+                    <span className="text-gray-600">ตำแหน่ง:</span>
+                    <span className="ml-1">{tank.location}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center">
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    tank.isActive 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {tank.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                  </span>
+                  
+                  {isLowLevel && (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                      ระดับต่ำ
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

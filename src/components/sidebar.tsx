@@ -27,7 +27,8 @@ const navigation = [
     children: [
       { name: 'ประเภทเชื้อเพลิง', href: '/fuel/types' },
       { name: 'ถังเก็บ', href: '/fuel/tanks' },
-      { name: 'ตู้จ่าย', href: '/fuel/dispensers' },
+      { name: 'หัวจ่าย', href: '/fuel/dispensers' },
+      { name: 'จัดการราคา', href: '/fuel/prices' },
     ]
   },
   { name: 'จัดการสินค้า', href: '/products', icon: Package },

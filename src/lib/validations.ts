@@ -79,7 +79,6 @@ export const productSchema = z.object({
   name: z.string().min(1, "กรุณากรอกชื่อสินค้า"),
   code: z.string().min(1, "กรุณากรอกรหัสสินค้า"),
   description: z.string().optional(),
-  price: z.number().positive("ราคาต้องมากกว่า 0"),
   cost: z.number().positive("ต้นทุนต้องมากกว่า 0").optional(),
   fuelTypeId: z.string().optional(),
   category: z.string().optional(),
@@ -87,6 +86,24 @@ export const productSchema = z.object({
   minStock: z.number().min(0, "สต็อกขั้นต่ำต้องไม่น้อยกว่า 0"),
   unit: z.string().default("ลิตร"),
   isActive: z.boolean().default(true),
+})
+
+// Product Price Management schemas
+export const productPriceSchema = z.object({
+  productId: z.string().min(1, "กรุณาเลือกสินค้า"),
+  price: z.number().positive("ราคาต้องมากกว่า 0"),
+  effectiveDate: z.string().min(1, "กรุณาเลือกวันที่มีผล"),
+  endDate: z.string().optional(),
+  isActive: z.boolean().default(true),
+})
+
+export const bulkPriceUpdateSchema = z.object({
+  products: z.array(z.object({
+    productId: z.string().min(1, "กรุณาเลือกสินค้า"),
+    price: z.number().positive("ราคาต้องมากกว่า 0"),
+  })),
+  effectiveDate: z.string().min(1, "กรุณาเลือกวันที่มีผล"),
+  endDate: z.string().optional(),
 })
 
 // Shift Management schemas
@@ -154,3 +171,5 @@ export type DebtorRecordFormData = z.infer<typeof debtorRecordSchema>
 export type CreateUserFormData = z.infer<typeof createUserSchema>
 export type UpdateUserFormData = z.infer<typeof updateUserSchema>
 export type ResetUserPasswordFormData = z.infer<typeof resetUserPasswordSchema>
+export type ProductPriceFormData = z.infer<typeof productPriceSchema>
+export type BulkPriceUpdateFormData = z.infer<typeof bulkPriceUpdateSchema>

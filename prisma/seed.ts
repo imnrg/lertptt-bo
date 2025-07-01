@@ -72,6 +72,78 @@ async function main() {
 
   console.log(`✅ สร้างประเภทเชื้อเพลิง ${fuelTypes.count} รายการ`)
 
+  // Create sample products with prices
+  const fuelTypeRecords = await prisma.fuelType.findMany()
+  
+  for (const fuelType of fuelTypeRecords) {
+    const product = await prisma.product.create({
+      data: {
+        name: fuelType.name,
+        code: `PROD_${fuelType.code}`,
+        description: `ผลิตภัณฑ์ ${fuelType.name}`,
+        cost: 35.5,
+        fuelTypeId: fuelType.id,
+        category: 'เชื้อเพลิง',
+        isActive: true,
+        stockQuantity: 1000,
+        minStock: 100,
+        unit: 'ลิตร',
+      }
+    })
+
+    // Create initial price for the product
+    await prisma.productPrice.create({
+      data: {
+        productId: product.id,
+        price: 38.5, // Sample price
+        effectiveDate: new Date(),
+        isActive: true,
+      }
+    })
+
+    console.log(`✅ สร้างผลิตภัณฑ์และราคา: ${product.name}`)
+  }
+
+  // Create sample tanks
+  const tanks = []
+  for (let i = 1; i <= 4; i++) {
+    const fuelType = fuelTypeRecords[i - 1]
+    if (fuelType) {
+      const tank = await prisma.tank.create({
+        data: {
+          name: `ถังที่ ${i}`,
+          code: `TANK_${i.toString().padStart(2, '0')}`,
+          capacity: 50000,
+          currentLevel: 25000,
+          minLevel: 5000,
+          maxLevel: 48000,
+          fuelTypeId: fuelType.id,
+          isActive: true,
+          location: `โซน ${i}`,
+        }
+      })
+      tanks.push(tank)
+      console.log(`✅ สร้างถังเก็บน้ำมัน: ${tank.name}`)
+    }
+  }
+
+  // Create sample dispensers
+  for (const tank of tanks) {
+    for (let j = 1; j <= 2; j++) {
+      const dispenser = await prisma.dispenser.create({
+        data: {
+          name: `หัวจ่าย ${tank.name.replace('ถังที่', '')}${j}`,
+          code: `DISP_${tank.code.replace('TANK_', '')}_${j}`,
+          tankId: tank.id,
+          fuelTypeId: tank.fuelTypeId,
+          isActive: true,
+          location: `${tank.location} หัวจ่าย ${j}`,
+        }
+      })
+      console.log(`✅ สร้างหัวจ่าย: ${dispenser.name}`)
+    }
+  }
+
   console.log('🎉 seed ข้อมูลเสร็จสิ้น!')
 }
 
