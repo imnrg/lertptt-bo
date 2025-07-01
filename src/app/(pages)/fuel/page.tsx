@@ -130,8 +130,8 @@ export default function FuelManagementPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">จัดการเชื้อเพลิง</h1>
-          <p className="text-gray-600 mt-1">ภาพรวมระบบจัดการเชื้อเพลิงและผลิตภัณฑ์</p>
+          <h1 className="text-3xl font-bold text-foreground">จัดการเชื้อเพลิง</h1>
+          <p className="text-muted-foreground mt-1">ภาพรวมระบบจัดการเชื้อเพลิงและผลิตภัณฑ์</p>
         </div>
       </div>
 
@@ -140,7 +140,7 @@ export default function FuelManagementPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">ประเภทเชื้อเพลิง</CardTitle>
-            <Fuel className="h-4 w-4 text-blue-600" />
+            <Fuel className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.fuelTypes.total || 0}</div>
@@ -153,7 +153,7 @@ export default function FuelManagementPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">ถังเก็บน้ำมัน</CardTitle>
-            <Gauge className="h-4 w-4 text-green-600" />
+            <Gauge className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.tanks.total || 0}</div>
@@ -162,8 +162,8 @@ export default function FuelManagementPage() {
             </p>
             {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 && (
               <div className="flex items-center mt-1">
-                <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
-                <span className="text-xs text-red-600">ต้องเติมน้ำมัน</span>
+                <AlertTriangle className="h-3 w-3 text-red-500 dark:text-red-400 mr-1" />
+                <span className="text-xs text-red-600 dark:text-red-400">ต้องเติมน้ำมัน</span>
               </div>
             )}
           </CardContent>
@@ -172,7 +172,7 @@ export default function FuelManagementPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">หัวจ่าย</CardTitle>
-            <Activity className="h-4 w-4 text-purple-600" />
+            <Activity className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.dispensers.total || 0}</div>
@@ -185,13 +185,13 @@ export default function FuelManagementPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">ระดับน้ำมันรวม</CardTitle>
-            <BarChart3 className="h-4 w-4 text-orange-600" />
+            <BarChart3 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{calculateFillPercentage().toFixed(1)}%</div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
               <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(calculateFillPercentage(), 100)}%` }}
               ></div>
             </div>
@@ -207,13 +207,13 @@ export default function FuelManagementPage() {
         <Link href="/fuel/types">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
             <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto group-hover:bg-blue-200 transition-colors">
-                <Fuel className="h-6 w-6 text-blue-600" />
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto group-hover:bg-blue-200 dark:group-hover:bg-blue-900/30 transition-colors">
+                <Fuel className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <CardTitle className="text-lg">ประเภทเชื้อเพลิง</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 จัดการประเภทเชื้อเพลิงต่างๆ เช่น เบนซิน 95, แก๊สโซฮอล์ E20
               </p>
               <Button className="w-full mt-4" variant="outline">
@@ -226,13 +226,13 @@ export default function FuelManagementPage() {
         <Link href="/fuel/tanks">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
             <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto group-hover:bg-green-200 transition-colors">
-                <Gauge className="h-6 w-6 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mx-auto group-hover:bg-green-200 dark:group-hover:bg-green-900/30 transition-colors">
+                <Gauge className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <CardTitle className="text-lg">ถังเก็บน้ำมัน</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 ตรวจสอบและจัดการถังเก็บน้ำมัน ระดับน้ำมัน และความจุ
               </p>
               <Button className="w-full mt-4" variant="outline">
@@ -245,13 +245,13 @@ export default function FuelManagementPage() {
         <Link href="/fuel/dispensers">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
             <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto group-hover:bg-purple-200 transition-colors">
-                <Activity className="h-6 w-6 text-purple-600" />
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mx-auto group-hover:bg-purple-200 dark:group-hover:bg-purple-900/30 transition-colors">
+                <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <CardTitle className="text-lg">หัวจ่าย</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 จัดการหัวจ่ายน้ำมัน เชื่อมต่อกับถังและตรวจสอบสถานะ
               </p>
               <Button className="w-full mt-4" variant="outline">
@@ -264,13 +264,13 @@ export default function FuelManagementPage() {
         <Link href="/fuel/prices">
           <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
             <CardHeader className="text-center pb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto group-hover:bg-orange-200 transition-colors">
-                <DollarSign className="h-6 w-6 text-orange-600" />
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center mx-auto group-hover:bg-orange-200 dark:group-hover:bg-orange-900/30 transition-colors">
+                <DollarSign className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               <CardTitle className="text-lg">จัดการราคา</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 text-center">
+              <p className="text-sm text-muted-foreground text-center">
                 กำหนดราคาผลิตภัณฑ์ ราคามีผล และอัปเดตราคาหลายรายการ
               </p>
               <Button className="w-full mt-4" variant="outline">
@@ -283,15 +283,15 @@ export default function FuelManagementPage() {
 
       {/* Alert Section */}
       {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
           <CardHeader>
-            <CardTitle className="text-red-800 flex items-center">
+            <CardTitle className="text-red-800 dark:text-red-400 flex items-center">
               <AlertTriangle className="h-5 w-5 mr-2" />
               แจ้งเตือนระดับน้ำมันต่ำ
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-red-700">
+            <p className="text-red-700 dark:text-red-300">
               มีถังน้ำมัน {stats.tanks.lowLevel} ถัง ที่มีระดับน้ำมันต่ำกว่าระดับขั้นต่ำที่กำหนด 
               กรุณาตรวจสอบและเติมน้ำมันโดยเร็วที่สุด
             </p>
