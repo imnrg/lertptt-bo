@@ -13,6 +13,12 @@ import {
   BarChart3
 } from 'lucide-react'
 
+interface FuelPrice {
+  effectiveDate: string
+  endDate: string | null
+  isActive: boolean
+}
+
 interface DashboardStats {
   fuelTypes: {
     total: number
@@ -28,9 +34,9 @@ interface DashboardStats {
     total: number
     active: number
   }
-  products: {
+  prices: {
     total: number
-    withPrices: number
+    active: number
   }
 }
 
@@ -56,21 +62,21 @@ export default function FuelManagementPage() {
       const dispensersRes = await fetch('/api/fuel/dispensers')
       const dispensers = await dispensersRes.json()
 
-      // Fetch products (assuming we have this endpoint)
-      let products = []
-      try {
-        const productsRes = await fetch('/api/products')
-        if (productsRes.ok) {
-          products = await productsRes.json()
-        }
-      } catch {
-        // If products endpoint doesn't exist, use empty array
-      }
+      // Fetch fuel prices
+      const pricesRes = await fetch('/api/fuel/prices')
+      const prices = await pricesRes.json()
 
       // Calculate stats
       const totalCapacity = tanks.reduce((sum: number, tank: { capacity: number }) => sum + tank.capacity, 0)
       const currentLevel = tanks.reduce((sum: number, tank: { currentLevel: number }) => sum + tank.currentLevel, 0)
       const lowLevelTanks = tanks.filter((tank: { currentLevel: number; minLevel: number }) => tank.currentLevel <= tank.minLevel).length
+
+      const activePrices = prices.filter((price: FuelPrice) => {
+        const now = new Date()
+        const effectiveDate = new Date(price.effectiveDate)
+        const endDate = price.endDate ? new Date(price.endDate) : null
+        return effectiveDate <= now && (!endDate || endDate > now) && price.isActive
+      }).length
 
       setStats({
         fuelTypes: {
@@ -87,9 +93,9 @@ export default function FuelManagementPage() {
           total: dispensers.length,
           active: dispensers.filter((d: { isActive: boolean }) => d.isActive).length
         },
-        products: {
-          total: products.length,
-          withPrices: products.filter((p: { prices?: unknown[] }) => p.prices && p.prices.length > 0).length
+        prices: {
+          total: prices.length,
+          active: activePrices
         }
       })
     } catch (error) {

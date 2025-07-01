@@ -74,6 +74,7 @@ model FuelType {
   tanks       Tank[]
   dispensers  Dispenser[]
   products    Product[]
+  prices      FuelPrice[]
 }
 
 model Tank {
@@ -169,6 +170,21 @@ model DebtorRecord {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   createdBy   User          @relation(fields: [createdById], references: [id])
+}
+
+model FuelPrice {
+  id            String   @id @default(cuid())
+  fuelTypeId    String
+  price         Float
+  effectiveDate DateTime
+  endDate       DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  fuelType      FuelType @relation(fields: [fuelTypeId], references: [id], onDelete: Cascade)
+  
+  @@index([fuelTypeId, effectiveDate])
+  @@index([effectiveDate, isActive])
 }
 
 enum UserRole {
