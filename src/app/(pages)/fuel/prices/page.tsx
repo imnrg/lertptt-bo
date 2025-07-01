@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AlertModal } from '@/components/ui/alert-modal'
+import { useAlert } from '@/lib/use-alert'
 import { DollarSign, Package, Fuel } from 'lucide-react'
 import { formatThaiDate, getCurrentDateForInput, inputDateToBangkokDate, getBangkokTime } from '@/lib/utils'
 
@@ -33,6 +35,7 @@ interface FuelPrice {
 }
 
 export default function FuelPriceManagementPage() {
+  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([])
   const [loading, setLoading] = useState(true)
@@ -100,7 +103,7 @@ export default function FuelPriceManagementPage() {
   const handlePriceUpdate = async (fuelTypeId: string) => {
     const formData = priceFormData[fuelTypeId]
     if (!formData || formData.price <= 0) {
-      alert('กรุณาระบุราคาที่ถูกต้อง')
+      showAlert('กรุณาระบุราคาที่ถูกต้อง', 'warning')
       return
     }
 
@@ -124,14 +127,14 @@ export default function FuelPriceManagementPage() {
 
       if (response.ok) {
         await fetchFuelPrices()
-        alert('อัปเดตราคาเชื้อเพลิงสำเร็จ')
+        showAlert('อัปเดตราคาเชื้อเพลิงสำเร็จ', 'success')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error updating fuel price:', error)
-      alert('เกิดข้อผิดพลาด')
+      showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
 
@@ -139,7 +142,7 @@ export default function FuelPriceManagementPage() {
     const validFormData = Object.entries(priceFormData).filter(([, data]) => data.price > 0)
     
     if (validFormData.length === 0) {
-      alert('กรุณาระบุราคาอย่างน้อย 1 ประเภท')
+      showAlert('กรุณาระบุราคาอย่างน้อย 1 ประเภท', 'warning')
       return
     }
 
@@ -167,14 +170,14 @@ export default function FuelPriceManagementPage() {
 
       if (response.ok) {
         await fetchFuelPrices()
-        alert('อัปเดตราคาเชื้อเพลิงทั้งหมดสำเร็จ')
+        showAlert('อัปเดตราคาเชื้อเพลิงทั้งหมดสำเร็จ', 'success')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error bulk updating fuel prices:', error)
-      alert('เกิดข้อผิดพลาด')
+      showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
 
@@ -536,6 +539,19 @@ export default function FuelPriceManagementPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        cancelText={alertState.cancelText}
+        onConfirm={alertState.onConfirm}
+        showCancel={alertState.showCancel}
+      />
     </div>
   )
 }

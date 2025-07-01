@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table } from '@/components/ui/table'
+import { AlertModal } from '@/components/ui/alert-modal'
+import { useAlert } from '@/lib/use-alert'
 import { 
   Plus, 
   Search, 
@@ -63,6 +65,7 @@ const roleColors = {
 
 export default function UsersPage() {
   const { data: session } = useSession()
+  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -156,23 +159,29 @@ export default function UsersPage() {
   }
 
   const handleDeleteUser = async (user: User) => {
-    if (!confirm(`คุณต้องการลบผู้ใช้ ${user.name} หรือไม่?`)) return
+    showConfirm(
+      `คุณต้องการลบผู้ใช้ ${user.name} หรือไม่?`,
+      async () => {
+        try {
+          const response = await fetch(`/api/users/${user.id}`, {
+            method: 'DELETE',
+          })
 
-    try {
-      const response = await fetch(`/api/users/${user.id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        toast.success('ลบผู้ใช้สำเร็จ')
-        fetchUsers()
-      } else {
-        const errorData = await response.json()
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้')
-      }
-    } catch {
-      toast.error('เกิดข้อผิดพลาดในการลบผู้ใช้')
-    }
+          if (response.ok) {
+            showAlert('ลบผู้ใช้สำเร็จ', 'success')
+            fetchUsers()
+          } else {
+            const errorData = await response.json()
+            showAlert(errorData.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้', 'error')
+          }
+        } catch {
+          showAlert('เกิดข้อผิดพลาดในการลบผู้ใช้', 'error')
+        }
+      },
+      'ยืนยันการลบ',
+      'ลบ',
+      'ยกเลิก'
+    )
   }
 
   const handleToggleStatus = async (user: User) => {
@@ -684,6 +693,19 @@ export default function UsersPage() {
           </Card>
         </div>
       )}
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        cancelText={alertState.cancelText}
+        onConfirm={alertState.onConfirm}
+        showCancel={alertState.showCancel}
+      />
     </div>
   )
 }

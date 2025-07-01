@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AlertModal } from '@/components/ui/alert-modal'
+import { useAlert } from '@/lib/use-alert'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 interface Tank {
@@ -42,6 +44,7 @@ interface FuelType {
 }
 
 export default function TanksPage() {
+  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
@@ -116,14 +119,14 @@ export default function TanksPage() {
       if (response.ok) {
         await fetchTanks()
         handleCloseForm()
-        alert(editingTank ? 'แก้ไขถังสำเร็จ' : 'เพิ่มถังสำเร็จ')
+        showAlert(editingTank ? 'แก้ไขถังสำเร็จ' : 'เพิ่มถังสำเร็จ', 'success')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error saving tank:', error)
-      alert('เกิดข้อผิดพลาด')
+      showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
 
@@ -144,26 +147,30 @@ export default function TanksPage() {
   }
 
   const handleDelete = async (tank: Tank) => {
-    if (!confirm(`คุณต้องการลบถัง "${tank.name}" หรือไม่?`)) {
-      return
-    }
+    showConfirm(
+      `คุณต้องการลบถัง "${tank.name}" หรือไม่?`,
+      async () => {
+        try {
+          const response = await fetch(`/api/fuel/tanks/${tank.id}`, {
+            method: 'DELETE',
+          })
 
-    try {
-      const response = await fetch(`/api/fuel/tanks/${tank.id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        await fetchTanks()
-        alert('ลบถังสำเร็จ')
-      } else {
-        const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
-      }
-    } catch (error) {
-      console.error('Error deleting tank:', error)
-      alert('เกิดข้อผิดพลาด')
-    }
+          if (response.ok) {
+            await fetchTanks()
+            showAlert('ลบถังสำเร็จ', 'success')
+          } else {
+            const error = await response.json()
+            showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
+          }
+        } catch (error) {
+          console.error('Error deleting tank:', error)
+          showAlert('เกิดข้อผิดพลาด', 'error')
+        }
+      },
+      'ยืนยันการลบ',
+      'ลบ',
+      'ยกเลิก'
+    )
   }
 
   const handleCloseForm = () => {
@@ -426,6 +433,19 @@ export default function TanksPage() {
           )
         })}
       </div>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        cancelText={alertState.cancelText}
+        onConfirm={alertState.onConfirm}
+        showCancel={alertState.showCancel}
+      />
     </div>
   )
 }

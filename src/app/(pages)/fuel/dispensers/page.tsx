@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { AlertModal } from '@/components/ui/alert-modal'
+import { useAlert } from '@/lib/use-alert'
+import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Dispenser {
   id: string
@@ -50,6 +52,7 @@ interface FuelType {
 }
 
 export default function DispensersPage() {
+  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
   const [dispensers, setDispensers] = useState<Dispenser[]>([])
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
@@ -138,14 +141,14 @@ export default function DispensersPage() {
       if (response.ok) {
         await fetchDispensers()
         handleCloseForm()
-        alert(editingDispenser ? 'แก้ไขหัวจ่ายสำเร็จ' : 'เพิ่มหัวจ่ายสำเร็จ')
+        showAlert(editingDispenser ? 'แก้ไขหัวจ่ายสำเร็จ' : 'เพิ่มหัวจ่ายสำเร็จ', 'success')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error saving dispenser:', error)
-      alert('เกิดข้อผิดพลาด')
+      showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
 
@@ -163,26 +166,30 @@ export default function DispensersPage() {
   }
 
   const handleDelete = async (dispenser: Dispenser) => {
-    if (!confirm(`คุณต้องการลบหัวจ่าย "${dispenser.name}" หรือไม่?`)) {
-      return
-    }
+    showConfirm(
+      `คุณต้องการลบหัวจ่าย "${dispenser.name}" หรือไม่?`,
+      async () => {
+        try {
+          const response = await fetch(`/api/fuel/dispensers/${dispenser.id}`, {
+            method: 'DELETE',
+          })
 
-    try {
-      const response = await fetch(`/api/fuel/dispensers/${dispenser.id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        await fetchDispensers()
-        alert('ลบหัวจ่ายสำเร็จ')
-      } else {
-        const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
-      }
-    } catch (error) {
-      console.error('Error deleting dispenser:', error)
-      alert('เกิดข้อผิดพลาด')
-    }
+          if (response.ok) {
+            await fetchDispensers()
+            showAlert('ลบหัวจ่ายสำเร็จ', 'success')
+          } else {
+            const error = await response.json()
+            showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
+          }
+        } catch (error) {
+          console.error('Error deleting dispenser:', error)
+          showAlert('เกิดข้อผิดพลาด', 'error')
+        }
+      },
+      'ยืนยันการลบ',
+      'ลบ',
+      'ยกเลิก'
+    )
   }
 
   const handleCloseForm = () => {
@@ -412,6 +419,19 @@ export default function DispensersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        cancelText={alertState.cancelText}
+        onConfirm={alertState.onConfirm}
+        showCancel={alertState.showCancel}
+      />
     </div>
   )
 }

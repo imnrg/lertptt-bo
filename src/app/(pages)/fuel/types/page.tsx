@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { AlertModal } from '@/components/ui/alert-modal'
+import { useAlert } from '@/lib/use-alert'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
 interface FuelType {
@@ -23,6 +25,7 @@ interface FuelType {
 }
 
 export default function FuelTypesPage() {
+  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -72,14 +75,14 @@ export default function FuelTypesPage() {
       if (response.ok) {
         await fetchFuelTypes()
         handleCloseForm()
-        alert(editingFuelType ? 'แก้ไขประเภทเชื้อเพลิงสำเร็จ' : 'เพิ่มประเภทเชื้อเพลิงสำเร็จ')
+        showAlert(editingFuelType ? 'แก้ไขประเภทเชื้อเพลิงสำเร็จ' : 'เพิ่มประเภทเชื้อเพลิงสำเร็จ', 'success')
       } else {
         const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
+        showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error saving fuel type:', error)
-      alert('เกิดข้อผิดพลาด')
+      showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
 
@@ -95,26 +98,30 @@ export default function FuelTypesPage() {
   }
 
   const handleDelete = async (fuelType: FuelType) => {
-    if (!confirm(`คุณต้องการลบประเภทเชื้อเพลิง "${fuelType.name}" หรือไม่?`)) {
-      return
-    }
+    showConfirm(
+      `คุณต้องการลบประเภทเชื้อเพลิง "${fuelType.name}" หรือไม่?`,
+      async () => {
+        try {
+          const response = await fetch(`/api/fuel/types/${fuelType.id}`, {
+            method: 'DELETE',
+          })
 
-    try {
-      const response = await fetch(`/api/fuel/types/${fuelType.id}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        await fetchFuelTypes()
-        alert('ลบประเภทเชื้อเพลิงสำเร็จ')
-      } else {
-        const error = await response.json()
-        alert(error.error || 'เกิดข้อผิดพลาด')
-      }
-    } catch (error) {
-      console.error('Error deleting fuel type:', error)
-      alert('เกิดข้อผิดพลาด')
-    }
+          if (response.ok) {
+            await fetchFuelTypes()
+            showAlert('ลบประเภทเชื้อเพลิงสำเร็จ', 'success')
+          } else {
+            const error = await response.json()
+            showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
+          }
+        } catch (error) {
+          console.error('Error deleting fuel type:', error)
+          showAlert('เกิดข้อผิดพลาด', 'error')
+        }
+      },
+      'ยืนยันการลบ',
+      'ลบ',
+      'ยกเลิก'
+    )
   }
 
   const handleCloseForm = () => {
@@ -269,6 +276,19 @@ export default function FuelTypesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Alert Modal */}
+      <AlertModal
+        isOpen={alertState.isOpen}
+        onClose={closeAlert}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        confirmText={alertState.confirmText}
+        cancelText={alertState.cancelText}
+        onConfirm={alertState.onConfirm}
+        showCancel={alertState.showCancel}
+      />
     </div>
   )
 }
