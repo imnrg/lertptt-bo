@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertModal } from '@/components/ui/alert-modal'
+import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 
@@ -25,7 +26,7 @@ interface FuelType {
 }
 
 export default function FuelTypesPage() {
-  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
+  const { alertState, loadingState, showAlert, showConfirm, showLoading, hideLoading, closeAlert } = useAlert()
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -58,6 +59,8 @@ export default function FuelTypesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      showLoading(editingFuelType ? 'กำลังแก้ไขประเภทเชื้อเพลิง...' : 'กำลังเพิ่มประเภทเชื้อเพลิง...')
+      
       const url = editingFuelType 
         ? `/api/fuel/types/${editingFuelType.id}`
         : '/api/fuel/types'
@@ -75,13 +78,16 @@ export default function FuelTypesPage() {
       if (response.ok) {
         await fetchFuelTypes()
         handleCloseForm()
+        hideLoading()
         showAlert(editingFuelType ? 'แก้ไขประเภทเชื้อเพลิงสำเร็จ' : 'เพิ่มประเภทเชื้อเพลิงสำเร็จ', 'success')
       } else {
         const error = await response.json()
+        hideLoading()
         showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error saving fuel type:', error)
+      hideLoading()
       showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
@@ -102,19 +108,24 @@ export default function FuelTypesPage() {
       `คุณต้องการลบประเภทเชื้อเพลิง "${fuelType.name}" หรือไม่?`,
       async () => {
         try {
+          showLoading('กำลังลบประเภทเชื้อเพลิง...')
+          
           const response = await fetch(`/api/fuel/types/${fuelType.id}`, {
             method: 'DELETE',
           })
 
           if (response.ok) {
             await fetchFuelTypes()
+            hideLoading()
             showAlert('ลบประเภทเชื้อเพลิงสำเร็จ', 'success')
           } else {
             const error = await response.json()
+            hideLoading()
             showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
           }
         } catch (error) {
           console.error('Error deleting fuel type:', error)
+          hideLoading()
           showAlert('เกิดข้อผิดพลาด', 'error')
         }
       },
@@ -143,7 +154,7 @@ export default function FuelTypesPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">จัดการประเภทเชื้อเพลิง</h1>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} disabled={loadingState.isLoading}>
           <Plus className="w-4 h-4 mr-2" />
           เพิ่มประเภทเชื้อเพลิง
         </Button>
@@ -168,6 +179,7 @@ export default function FuelTypesPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="เช่น เบนซิน 95"
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -178,6 +190,7 @@ export default function FuelTypesPage() {
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     placeholder="เช่น E95"
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
               </div>
@@ -188,6 +201,7 @@ export default function FuelTypesPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="เช่น เบนซิน 95 ออกเทน"
+                  disabled={loadingState.isLoading}
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -196,14 +210,15 @@ export default function FuelTypesPage() {
                   id="isActive"
                   checked={formData.isActive}
                   onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  disabled={loadingState.isLoading}
                 />
                 <label htmlFor="isActive" className="text-sm font-medium">เปิดใช้งาน</label>
               </div>
               <div className="flex gap-2">
-                <Button type="submit">
+                <Button type="submit" disabled={loadingState.isLoading}>
                   {editingFuelType ? 'บันทึกการแก้ไข' : 'เพิ่มประเภทเชื้อเพลิง'}
                 </Button>
-                <Button type="button" variant="outline" onClick={handleCloseForm}>
+                <Button type="button" variant="outline" onClick={handleCloseForm} disabled={loadingState.isLoading}>
                   ยกเลิก
                 </Button>
               </div>
@@ -255,6 +270,7 @@ export default function FuelTypesPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleEdit(fuelType)}
+                        disabled={loadingState.isLoading}
                       >
                         <Edit className="w-3 h-3" />
                       </Button>
@@ -262,7 +278,8 @@ export default function FuelTypesPage() {
                         size="sm"
                         variant="destructive"
                         onClick={() => handleDelete(fuelType)}
-                        disabled={(fuelType._count?.tanks || 0) > 0 || 
+                        disabled={loadingState.isLoading || 
+                                 (fuelType._count?.tanks || 0) > 0 || 
                                  (fuelType._count?.dispensers || 0) > 0 || 
                                  (fuelType._count?.products || 0) > 0}
                       >
@@ -289,6 +306,9 @@ export default function FuelTypesPage() {
         onConfirm={alertState.onConfirm}
         showCancel={alertState.showCancel}
       />
+
+      {/* Loading Modal */}
+      <LoadingModal loadingState={loadingState} />
     </div>
   )
 }

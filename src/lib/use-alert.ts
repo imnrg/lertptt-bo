@@ -11,6 +11,11 @@ export interface AlertState {
   showCancel: boolean
 }
 
+export interface LoadingState {
+  isLoading: boolean
+  message: string
+}
+
 const initialState: AlertState = {
   isOpen: false,
   message: '',
@@ -18,8 +23,14 @@ const initialState: AlertState = {
   showCancel: false
 }
 
+const initialLoadingState: LoadingState = {
+  isLoading: false,
+  message: ''
+}
+
 export function useAlert() {
   const [alertState, setAlertState] = useState<AlertState>(initialState)
+  const [loadingState, setLoadingState] = useState<LoadingState>(initialLoadingState)
 
   const showAlert = (
     message: string,
@@ -55,14 +66,28 @@ export function useAlert() {
     })
   }
 
+  const showLoading = (message: string = 'กำลังประมวลผล...') => {
+    setLoadingState({
+      isLoading: true,
+      message
+    })
+  }
+
+  const hideLoading = () => {
+    setLoadingState(initialLoadingState)
+  }
+
   const closeAlert = () => {
     setAlertState(initialState)
   }
 
   return {
     alertState,
+    loadingState,
     showAlert,
     showConfirm,
+    showLoading,
+    hideLoading,
     closeAlert
   }
 }

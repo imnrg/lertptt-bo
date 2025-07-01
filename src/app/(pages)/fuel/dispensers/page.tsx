@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertModal } from '@/components/ui/alert-modal'
 import { useAlert } from '@/lib/use-alert'
-import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Dispenser {

@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertModal } from '@/components/ui/alert-modal'
+import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { DollarSign, Package, Fuel } from 'lucide-react'
 import { formatThaiDate, getCurrentDateForInput, inputDateToBangkokDate, getBangkokTime } from '@/lib/utils'
@@ -35,7 +36,7 @@ interface FuelPrice {
 }
 
 export default function FuelPriceManagementPage() {
-  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
+  const { alertState, loadingState, showAlert, showLoading, hideLoading, closeAlert } = useAlert()
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,12 +51,7 @@ export default function FuelPriceManagementPage() {
     }
   }>({})
 
-  useEffect(() => {
-    fetchFuelTypes()
-    fetchFuelPrices()
-  }, [])
-
-  const fetchFuelTypes = async () => {
+  const fetchFuelTypes = useCallback(async () => {
     try {
       const response = await fetch('/api/fuel/types')
       if (response.ok) {
@@ -84,9 +80,9 @@ export default function FuelPriceManagementPage() {
     } catch (error) {
       console.error('Error fetching fuel types:', error)
     }
-  }
+  }, [fuelPrices])
 
-  const fetchFuelPrices = async () => {
+  const fetchFuelPrices = useCallback(async () => {
     try {
       const response = await fetch('/api/fuel/prices')
       if (response.ok) {
@@ -98,7 +94,17 @@ export default function FuelPriceManagementPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchFuelPrices()
+  }, [fetchFuelPrices])
+
+  useEffect(() => {
+    if (fuelPrices.length > 0) {
+      fetchFuelTypes()
+    }
+  }, [fuelPrices, fetchFuelTypes])
 
   const handlePriceUpdate = async (fuelTypeId: string) => {
     const formData = priceFormData[fuelTypeId]
@@ -108,6 +114,8 @@ export default function FuelPriceManagementPage() {
     }
 
     try {
+      showLoading('กำลังอัปเดตราคาเชื้อเพลิง...')
+      
       // Convert input date to Bangkok timezone
       const effectiveDate = inputDateToBangkokDate(formData.effectiveDate)
       const endDate = formData.endDate ? inputDateToBangkokDate(formData.endDate) : undefined
@@ -127,13 +135,16 @@ export default function FuelPriceManagementPage() {
 
       if (response.ok) {
         await fetchFuelPrices()
+        hideLoading()
         showAlert('อัปเดตราคาเชื้อเพลิงสำเร็จ', 'success')
       } else {
         const error = await response.json()
+        hideLoading()
         showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error updating fuel price:', error)
+      hideLoading()
       showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
@@ -147,6 +158,8 @@ export default function FuelPriceManagementPage() {
     }
 
     try {
+      showLoading(`กำลังอัปเดตราคาเชื้อเพลิง ${validFormData.length} ประเภท...`)
+      
       // Convert input dates to Bangkok timezone
       const effectiveDate = inputDateToBangkokDate(validFormData[0][1].effectiveDate)
       const endDate = validFormData[0][1].endDate ? inputDateToBangkokDate(validFormData[0][1].endDate) : undefined
@@ -170,13 +183,16 @@ export default function FuelPriceManagementPage() {
 
       if (response.ok) {
         await fetchFuelPrices()
+        hideLoading()
         showAlert('อัปเดตราคาเชื้อเพลิงทั้งหมดสำเร็จ', 'success')
       } else {
         const error = await response.json()
+        hideLoading()
         showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error bulk updating fuel prices:', error)
+      hideLoading()
       showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
@@ -298,7 +314,11 @@ export default function FuelPriceManagementPage() {
               <DollarSign className="w-5 h-5" />
               อัปเดตราคาเชื้อเพลิง
             </CardTitle>
-            <Button onClick={handleBulkPriceUpdate} className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              onClick={handleBulkPriceUpdate} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={loadingState.isLoading}
+            >
               <Package className="w-4 h-4 mr-2" />
               อัปเดตราคาทั้งหมด
             </Button>
@@ -343,6 +363,7 @@ export default function FuelPriceManagementPage() {
                           value={formData.price}
                           onChange={(e) => updatePriceFormData(fuelType.id, 'price', Number(e.target.value))}
                           placeholder="0.00"
+                          disabled={loadingState.isLoading}
                         />
                       </div>
                       
@@ -352,6 +373,7 @@ export default function FuelPriceManagementPage() {
                           type="date"
                           value={formData.effectiveDate}
                           onChange={(e) => updatePriceFormData(fuelType.id, 'effectiveDate', e.target.value)}
+                          disabled={loadingState.isLoading}
                         />
                       </div>
                       
@@ -361,13 +383,14 @@ export default function FuelPriceManagementPage() {
                           type="date"
                           value={formData.endDate}
                           onChange={(e) => updatePriceFormData(fuelType.id, 'endDate', e.target.value)}
+                          disabled={loadingState.isLoading}
                         />
                       </div>
                       
                       <div className="lg:col-span-2">
                         <Button 
                           onClick={() => handlePriceUpdate(fuelType.id)}
-                          disabled={!formData.price || formData.price <= 0}
+                          disabled={!formData.price || formData.price <= 0 || loadingState.isLoading}
                           className="w-full"
                           variant="outline"
                         >
@@ -552,6 +575,9 @@ export default function FuelPriceManagementPage() {
         onConfirm={alertState.onConfirm}
         showCancel={alertState.showCancel}
       />
+
+      {/* Loading Modal */}
+      <LoadingModal loadingState={loadingState} />
     </div>
   )
 }
