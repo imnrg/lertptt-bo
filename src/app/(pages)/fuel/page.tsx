@@ -131,7 +131,7 @@ export default function FuelManagementPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">จัดการเชื้อเพลิง</h1>
-          <p className="text-gray-600 mt-1">ภาพรวมระบบจัดการเชื้อเพลิงและผลิตภัณฑ์</p>
+          <p className="text-gray-600 mt-1">ภาพรวมระบบจัดการเชื้อเพลิง</p>
         </div>
       </div>
 
@@ -160,12 +160,12 @@ export default function FuelManagementPage() {
             <p className="text-xs text-muted-foreground">
               ระดับต่ำ: {stats?.tanks.lowLevel || 0} ถัง
             </p>
-            {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 && (
+            {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 ? (
               <div className="flex items-center mt-1">
                 <AlertTriangle className="h-3 w-3 text-red-500 mr-1" />
                 <span className="text-xs text-red-600">ต้องเติมน้ำมัน</span>
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
@@ -282,7 +282,7 @@ export default function FuelManagementPage() {
       </div>
 
       {/* Alert Section */}
-      {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 && (
+      {stats?.tanks.lowLevel && stats.tanks.lowLevel > 0 ? (
         <Card className="border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="text-red-800 flex items-center">
@@ -302,7 +302,7 @@ export default function FuelManagementPage() {
             </Link>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   )
 }
