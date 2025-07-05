@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
-import { DollarSign, Package, Fuel } from 'lucide-react'
+import { DollarSign, Package, Fuel, Trash } from 'lucide-react'
 import { formatThaiDate, getCurrentDateForInput, inputDateToBangkokDate, getBangkokTime } from '@/lib/utils'
 
 interface FuelType {
@@ -46,10 +46,14 @@ export default function FuelPriceManagementPage() {
   const [priceFormData, setPriceFormData] = useState<{
     [key: string]: {
       price: number
-      effectiveDate: string
-      endDate: string
     }
   }>({})
+
+  // Global date settings for all fuel types
+  const [globalDateSettings, setGlobalDateSettings] = useState({
+    effectiveDate: getCurrentDateForInput(),
+    endDate: ''
+  })
 
   const fetchFuelTypes = useCallback(async () => {
     try {
@@ -81,7 +85,7 @@ export default function FuelPriceManagementPage() {
   }, [])
 
   const initializePriceFormData = useCallback((fuelTypes: FuelType[], fuelPrices: FuelPrice[]) => {
-    const initialPriceData: { [key: string]: { price: number; effectiveDate: string; endDate: string } } = {}
+    const initialPriceData: { [key: string]: { price: number } } = {}
     fuelTypes.forEach((fuelType: FuelType) => {
       const currentPrice = fuelPrices.find(price => 
         price.fuelTypeId === fuelType.id && 
@@ -91,9 +95,7 @@ export default function FuelPriceManagementPage() {
       )
       
       initialPriceData[fuelType.id] = {
-        price: currentPrice?.price || 0,
-        effectiveDate: getCurrentDateForInput(),
-        endDate: ''
+        price: currentPrice?.price || 0
       }
     })
     setPriceFormData(initialPriceData)
@@ -134,8 +136,8 @@ export default function FuelPriceManagementPage() {
       showLoading('กำลังอัปเดตราคาเชื้อเพลิง...')
       
       // Convert input date to Bangkok timezone
-      const effectiveDate = inputDateToBangkokDate(formData.effectiveDate)
-      const endDate = formData.endDate ? inputDateToBangkokDate(formData.endDate) : undefined
+      const effectiveDate = inputDateToBangkokDate(globalDateSettings.effectiveDate)
+      const endDate = globalDateSettings.endDate ? inputDateToBangkokDate(globalDateSettings.endDate) : undefined
 
       const response = await fetch('/api/fuel/prices', {
         method: 'POST',
@@ -178,8 +180,8 @@ export default function FuelPriceManagementPage() {
       showLoading(`กำลังอัปเดตราคาเชื้อเพลิง ${validFormData.length} ประเภท...`)
       
       // Convert input dates to Bangkok timezone
-      const effectiveDate = inputDateToBangkokDate(validFormData[0][1].effectiveDate)
-      const endDate = validFormData[0][1].endDate ? inputDateToBangkokDate(validFormData[0][1].endDate) : undefined
+      const effectiveDate = inputDateToBangkokDate(globalDateSettings.effectiveDate)
+      const endDate = globalDateSettings.endDate ? inputDateToBangkokDate(globalDateSettings.endDate) : undefined
 
       const bulkData = {
         fuelTypes: validFormData.map(([fuelTypeId, data]) => ({
@@ -214,6 +216,30 @@ export default function FuelPriceManagementPage() {
     }
   }
 
+  const handleCancelFuturePrice = async (priceId: string, fuelTypeName: string) => {
+    try {
+      showLoading('กำลังยกเลิกราคา...')
+      
+      const response = await fetch(`/api/fuel/prices/${priceId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        await fetchFuelPrices()
+        hideLoading()
+        showAlert(`ยกเลิกราคา ${fuelTypeName} สำเร็จ`, 'success')
+      } else {
+        const error = await response.json()
+        hideLoading()
+        showAlert(error.error || 'เกิดข้อผิดพลาดในการยกเลิกราคา', 'error')
+      }
+    } catch (error) {
+      console.error('Error canceling future price:', error)
+      hideLoading()
+      showAlert('เกิดข้อผิดพลาดในการยกเลิกราคา', 'error')
+    }
+  }
+
   const updatePriceFormData = (fuelTypeId: string, field: string, value: string | number) => {
     setPriceFormData(prev => ({
       ...prev,
@@ -221,6 +247,13 @@ export default function FuelPriceManagementPage() {
         ...prev[fuelTypeId],
         [field]: value
       }
+    }))
+  }
+
+  const updateGlobalDateSettings = (field: string, value: string) => {
+    setGlobalDateSettings(prev => ({
+      ...prev,
+      [field]: value
     }))
   }
 
@@ -347,77 +380,75 @@ export default function FuelPriceManagementPage() {
               <p>ไม่พบประเภทเชื้อเพลิง</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {fuelTypes.map((fuelType) => {
-                const currentPrice = getCurrentPrices().find(price => price.fuelTypeId === fuelType.id)
-                const formData = priceFormData[fuelType.id] || { price: 0, effectiveDate: '', endDate: '' }
-                
-                return (
-                  <div key={fuelType.id} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 items-end">
-                      <div className="lg:col-span-1">
-                        <label className="block text-sm font-medium mb-1">ประเภทเชื้อเพลิง</label>
-                        <div className="space-y-1">
-                          <div className="font-medium">{fuelType.name}</div>
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${getFuelTypeColor(fuelType.code)}`}>
-                            {fuelType.code}
-                          </span>
-                          {currentPrice && (
-                            <div className="text-sm text-gray-600">
-                              ปัจจุบัน: ฿{currentPrice.price.toFixed(2)}
-                            </div>
-                          )}
+            <div className="space-y-6">
+              {/* Global Date Settings */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-blue-800">วันที่มีผล</label>
+                    <Input
+                      type="date"
+                      value={globalDateSettings.effectiveDate}
+                      onChange={(e) => updateGlobalDateSettings('effectiveDate', e.target.value)}
+                      disabled={loadingState.isLoading}
+                      className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-blue-800">วันที่สิ้นสุด (ไม่บังคับ)</label>
+                    <Input
+                      type="date"
+                      value={globalDateSettings.endDate}
+                      onChange={(e) => updateGlobalDateSettings('endDate', e.target.value)}
+                      disabled={loadingState.isLoading}
+                      className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-blue-600 mt-1">หากไม่ระบุ ราคาจะมีผลต่อเนื่อง</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Forms */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">ราคาเชื้อเพลิงแต่ละประเภท</h3>
+                {fuelTypes.map((fuelType) => {
+                  const currentPrice = getCurrentPrices().find(price => price.fuelTypeId === fuelType.id)
+                  const formData = priceFormData[fuelType.id] || { price: 0 }
+                  
+                  return (
+                    <div key={fuelType.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                        <div className="lg:col-span-1">
+                          <div className="space-y-1">
+                            <div className="font-medium">{fuelType.name}</div>
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs ${getFuelTypeColor(fuelType.code)}`}>
+                              {fuelType.code} 
+                            </span>
+                          </div>
+                        </div>                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">ราคาปัจจุบัน (บาท/ลิตร)</label>
+                          <div className="font-medium">{currentPrice ? currentPrice.price.toFixed(2) : 'ยังไม่กำหนดราคา'}</div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">ราคาใหม่ (บาท/ลิตร)</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.price}
+                            onChange={(e) => updatePriceFormData(fuelType.id, 'price', Number(e.target.value))}
+                            placeholder="0.00"
+                            disabled={loadingState.isLoading}
+                          />
                         </div>
                       </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">ราคาใหม่ (บาท/ลิตร)</label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.price}
-                          onChange={(e) => updatePriceFormData(fuelType.id, 'price', Number(e.target.value))}
-                          placeholder="0.00"
-                          disabled={loadingState.isLoading}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">วันที่มีผล</label>
-                        <Input
-                          type="date"
-                          value={formData.effectiveDate}
-                          onChange={(e) => updatePriceFormData(fuelType.id, 'effectiveDate', e.target.value)}
-                          disabled={loadingState.isLoading}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">วันที่สิ้นสุด (ไม่บังคับ)</label>
-                        <Input
-                          type="date"
-                          value={formData.endDate}
-                          onChange={(e) => updatePriceFormData(fuelType.id, 'endDate', e.target.value)}
-                          disabled={loadingState.isLoading}
-                        />
-                      </div>
-                      
-                      <div className="lg:col-span-2">
-                        <Button 
-                          onClick={() => handlePriceUpdate(fuelType.id)}
-                          disabled={!formData.price || formData.price <= 0 || loadingState.isLoading}
-                          className="w-full"
-                          variant="outline"
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          อัปเดตราคา {fuelType.code}
-                        </Button>
-                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )}
         </CardContent>
@@ -500,6 +531,7 @@ export default function FuelPriceManagementPage() {
                       <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
                       <TableHead>วันที่มีผล</TableHead>
                       <TableHead>วันที่สิ้นสุด</TableHead>
+                      <TableHead className="text-center">จัดการ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -519,6 +551,16 @@ export default function FuelPriceManagementPage() {
                         </TableCell>
                         <TableCell>
                           {price.endDate ? formatThaiDate(price.endDate) : 'ไม่กำหนด'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button 
+                            onClick={() => handleCancelFuturePrice(price.id, price.fuelType.name)} 
+                            variant="destructive"
+                            size="icon"
+                            disabled={loadingState.isLoading}
+                          >
+                            <Trash className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
