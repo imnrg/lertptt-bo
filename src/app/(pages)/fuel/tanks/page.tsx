@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertModal } from '@/components/ui/alert-modal'
+import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
 
 interface Tank {
   id: string
@@ -16,7 +18,6 @@ interface Tank {
   capacity: number
   currentLevel: number
   minLevel: number
-  maxLevel?: number
   fuelTypeId: string
   isActive: boolean
   location?: string
@@ -44,7 +45,7 @@ interface FuelType {
 }
 
 export default function TanksPage() {
-  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
+  const { alertState, loadingState, showAlert, showConfirm, showLoading, hideLoading, closeAlert } = useAlert()
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,9 +57,7 @@ export default function TanksPage() {
     capacity: 0,
     currentLevel: 0,
     minLevel: 0,
-    maxLevel: 0,
     fuelTypeId: '',
-    location: '',
     isActive: true
   })
 
@@ -96,6 +95,8 @@ export default function TanksPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      showLoading(editingTank ? 'กำลังแก้ไขถัง...' : 'กำลังเพิ่มถัง...')
+      
       const url = editingTank 
         ? `/api/fuel/tanks/${editingTank.id}`
         : '/api/fuel/tanks'
@@ -112,20 +113,22 @@ export default function TanksPage() {
           capacity: Number(formData.capacity),
           currentLevel: Number(formData.currentLevel),
           minLevel: Number(formData.minLevel),
-          maxLevel: formData.maxLevel ? Number(formData.maxLevel) : undefined,
         }),
       })
 
       if (response.ok) {
         await fetchTanks()
         handleCloseForm()
+        hideLoading()
         showAlert(editingTank ? 'แก้ไขถังสำเร็จ' : 'เพิ่มถังสำเร็จ', 'success')
       } else {
         const error = await response.json()
+        hideLoading()
         showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
       }
     } catch (error) {
       console.error('Error saving tank:', error)
+      hideLoading()
       showAlert('เกิดข้อผิดพลาด', 'error')
     }
   }
@@ -138,9 +141,7 @@ export default function TanksPage() {
       capacity: tank.capacity,
       currentLevel: tank.currentLevel,
       minLevel: tank.minLevel,
-      maxLevel: tank.maxLevel || 0,
       fuelTypeId: tank.fuelTypeId,
-      location: tank.location || '',
       isActive: tank.isActive
     })
     setShowForm(true)
@@ -151,19 +152,24 @@ export default function TanksPage() {
       `คุณต้องการลบถัง "${tank.name}" หรือไม่?`,
       async () => {
         try {
+          showLoading('กำลังลบถัง...')
+          
           const response = await fetch(`/api/fuel/tanks/${tank.id}`, {
             method: 'DELETE',
           })
 
           if (response.ok) {
             await fetchTanks()
+            hideLoading()
             showAlert('ลบถังสำเร็จ', 'success')
           } else {
             const error = await response.json()
+            hideLoading()
             showAlert(error.error || 'เกิดข้อผิดพลาด', 'error')
           }
         } catch (error) {
           console.error('Error deleting tank:', error)
+          hideLoading()
           showAlert('เกิดข้อผิดพลาด', 'error')
         }
       },
@@ -182,9 +188,7 @@ export default function TanksPage() {
       capacity: 0,
       currentLevel: 0,
       minLevel: 0,
-      maxLevel: 0,
       fuelTypeId: '',
-      location: '',
       isActive: true
     })
   }
@@ -194,14 +198,21 @@ export default function TanksPage() {
   }
 
   if (loading) {
-    return <div className="p-6">กำลังโหลด...</div>
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
+          <p>กำลังโหลดข้อมูลถัง...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">จัดการถังเก็บน้ำมัน</h1>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} disabled={loadingState.isLoading}>
           <Plus className="w-4 h-4 mr-2" />
           เพิ่มถัง
         </Button>
@@ -226,6 +237,7 @@ export default function TanksPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="เช่น ถังที่ 1"
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -236,6 +248,7 @@ export default function TanksPage() {
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     placeholder="เช่น TANK_01"
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
               </div>
@@ -245,6 +258,7 @@ export default function TanksPage() {
                 <Select
                   value={formData.fuelTypeId}
                   onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
+                  disabled={loadingState.isLoading}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="เลือกประเภทเชื้อเพลิง" />
@@ -269,6 +283,7 @@ export default function TanksPage() {
                     placeholder="50000"
                     required
                     min="0"
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -280,6 +295,7 @@ export default function TanksPage() {
                     placeholder="25000"
                     required
                     min="0"
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -291,28 +307,7 @@ export default function TanksPage() {
                     placeholder="5000"
                     required
                     min="0"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">ระดับสูงสุด (ลิตร)</label>
-                  <Input
-                    type="number"
-                    value={formData.maxLevel}
-                    onChange={(e) => setFormData({ ...formData, maxLevel: Number(e.target.value) })}
-                    placeholder="48000"
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">ตำแหน่ง</label>
-                  <Input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="โซน 1"
+                    disabled={loadingState.isLoading}
                   />
                 </div>
               </div>
@@ -323,15 +318,16 @@ export default function TanksPage() {
                   id="isActive"
                   checked={formData.isActive}
                   onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  disabled={loadingState.isLoading}
                 />
                 <label htmlFor="isActive" className="text-sm font-medium">เปิดใช้งาน</label>
               </div>
 
               <div className="flex gap-2">
-                <Button type="submit">
+                <Button type="submit" disabled={loadingState.isLoading}>
                   {editingTank ? 'บันทึกการแก้ไข' : 'เพิ่มถัง'}
                 </Button>
-                <Button type="button" variant="outline" onClick={handleCloseForm}>
+                <Button type="button" variant="outline" onClick={handleCloseForm} disabled={loadingState.isLoading}>
                   ยกเลิก
                 </Button>
               </div>
@@ -340,99 +336,119 @@ export default function TanksPage() {
         </Card>
       )}
 
-      {/* Tank Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {tanks.map((tank) => {
-          const fillPercentage = calculateFillPercentage(tank.currentLevel, tank.capacity)
-          const isLowLevel = tank.currentLevel <= tank.minLevel
-          
-          return (
-            <Card key={tank.id} className={`${isLowLevel ? 'border-red-300 bg-red-50' : ''}`}>
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{tank.name}</CardTitle>
-                    <p className="text-sm text-gray-600">{tank.code}</p>
-                    <p className="text-sm text-blue-600">{tank.fuelType.name}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(tank)}>
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="destructive" 
-                      onClick={() => handleDelete(tank)}
-                      disabled={tank._count.dispensers > 0}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>ระดับน้ำมัน</span>
-                    <span>{fillPercentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
-                      className={`h-3 rounded-full ${
-                        isLowLevel ? 'bg-red-500' : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${Math.min(fillPercentage, 100)}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-600 mt-1">
-                    <span>{tank.currentLevel.toLocaleString()} ลิตร</span>
-                    <span>{tank.capacity.toLocaleString()} ลิตร</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-gray-600">ขั้นต่ำ:</span>
-                    <span className="ml-1">{tank.minLevel.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">สูงสุด:</span>
-                    <span className="ml-1">{tank.maxLevel?.toLocaleString() || '-'}</span>
-                  </div>
-                </div>
-
-                <div className="text-sm">
-                  <span className="text-gray-600">หัวจ่าย:</span>
-                  <span className="ml-1">{tank._count.dispensers} ตัว</span>
-                </div>
-
-                {tank.location && (
-                  <div className="text-sm">
-                    <span className="text-gray-600">ตำแหน่ง:</span>
-                    <span className="ml-1">{tank.location}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    tank.isActive 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {tank.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
-                  </span>
+      {/* Tanks Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>รายการถังเก็บน้ำมัน</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ชื่อถัง</TableHead>
+                <TableHead>รหัส</TableHead>
+                <TableHead>ประเภทเชื้อเพลิง</TableHead>
+                <TableHead>ความจุ</TableHead>
+                <TableHead>ระดับปัจจุบัน</TableHead>
+                <TableHead>ระดับขั้นต่ำ</TableHead>
+                <TableHead>หัวจ่าย</TableHead>
+                <TableHead>สถานะ</TableHead>
+                <TableHead>การจัดการ</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {tanks.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    ไม่มีข้อมูลถัง
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tanks.map((tank: Tank) => {
+                  const fillPercentage = calculateFillPercentage(tank.currentLevel, tank.capacity)
+                  const isLowLevel = tank.currentLevel <= tank.minLevel
                   
-                  {isLowLevel && (
-                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
-                      ระดับต่ำ
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                  return (
+                    <TableRow key={tank.id} className={isLowLevel ? 'bg-red-50' : ''}>
+                      <TableCell className="font-medium">{tank.name}</TableCell>
+                      <TableCell>{tank.code}</TableCell>
+                      <TableCell>
+                        <span className="text-blue-600">{tank.fuelType.name}</span>
+                        <div className="text-xs text-gray-500">({tank.fuelType.code})</div>
+                      </TableCell>
+                      <TableCell>{tank.capacity.toLocaleString()} ลิตร</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={isLowLevel ? 'text-red-600 font-semibold' : ''}>
+                              {tank.currentLevel.toLocaleString()} ลิตร
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({fillPercentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${
+                                isLowLevel ? 'bg-red-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${Math.min(fillPercentage, 100)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={isLowLevel ? 'text-red-600 font-semibold' : ''}>
+                          {tank.minLevel.toLocaleString()} ลิตร
+                        </span>
+                      </TableCell>
+                      <TableCell>{tank._count.dispensers} ตัว</TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            tank.isActive 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {tank.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                          </span>
+                          {isLowLevel && (
+                            <div>
+                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                                ระดับต่ำ
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(tank)}
+                            disabled={loadingState.isLoading}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(tank)}
+                            disabled={loadingState.isLoading || tank._count.dispensers > 0}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Alert Modal */}
       <AlertModal
@@ -446,6 +462,9 @@ export default function TanksPage() {
         onConfirm={alertState.onConfirm}
         showCancel={alertState.showCancel}
       />
+
+      {/* Loading Modal */}
+      <LoadingModal loadingState={loadingState} />
     </div>
   )
 }

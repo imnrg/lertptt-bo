@@ -9,6 +9,7 @@ import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Fuel } from 'lucide-react'
 
 interface FuelType {
   id: string
@@ -147,7 +148,14 @@ export default function FuelTypesPage() {
   }
 
   if (loading) {
-    return <div className="p-6">กำลังโหลด...</div>
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
+          <p>กำลังโหลดข้อมูลประเภทเชื้อเพลิง...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -241,54 +249,59 @@ export default function FuelTypesPage() {
                 <TableHead>คำอธิบาย</TableHead>
                 <TableHead>จำนวนถัง</TableHead>
                 <TableHead>จำนวนหัวจ่าย</TableHead>
-                <TableHead>จำนวนผลิตภัณฑ์</TableHead>
                 <TableHead>สถานะ</TableHead>
                 <TableHead>การจัดการ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {fuelTypes.map((fuelType: FuelType) => (
-                <TableRow key={fuelType.id}>
-                  <TableCell className="font-medium">{fuelType.name}</TableCell>
-                  <TableCell>{fuelType.code}</TableCell>
-                  <TableCell>{fuelType.description || '-'}</TableCell>
-                  <TableCell>{fuelType._count?.tanks || 0}</TableCell>
-                  <TableCell>{fuelType._count?.dispensers || 0}</TableCell>
-                  <TableCell>{fuelType._count?.products || 0}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      fuelType.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {fuelType.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEdit(fuelType)}
-                        disabled={loadingState.isLoading}
-                      >
-                        <Edit className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(fuelType)}
-                        disabled={loadingState.isLoading || 
-                                 (fuelType._count?.tanks || 0) > 0 || 
-                                 (fuelType._count?.dispensers || 0) > 0 || 
-                                 (fuelType._count?.products || 0) > 0}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
+              {fuelTypes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    ไม่มีข้อมูลประเภทเชื้อเพลิง
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                fuelTypes.map((fuelType: FuelType) => (
+                  <TableRow key={fuelType.id}>
+                    <TableCell className="font-medium">{fuelType.name}</TableCell>
+                    <TableCell>{fuelType.code}</TableCell>
+                    <TableCell>{fuelType.description || '-'}</TableCell>
+                    <TableCell>{fuelType._count?.tanks || 0}</TableCell>
+                    <TableCell>{fuelType._count?.dispensers || 0}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        fuelType.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {fuelType.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(fuelType)}
+                          disabled={loadingState.isLoading}
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(fuelType)}
+                          disabled={loadingState.isLoading || 
+                                   (fuelType._count?.tanks || 0) > 0 || 
+                                   (fuelType._count?.dispensers || 0) > 0}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

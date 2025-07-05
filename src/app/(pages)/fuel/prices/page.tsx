@@ -58,29 +58,13 @@ export default function FuelPriceManagementPage() {
         const data = await response.json()
         const activeFuelTypes = data.filter((fuelType: FuelType) => fuelType.isActive)
         setFuelTypes(activeFuelTypes)
-        
-        // Initialize price form data for all fuel types
-        const initialPriceData: { [key: string]: { price: number; effectiveDate: string; endDate: string } } = {}
-        activeFuelTypes.forEach((fuelType: FuelType) => {
-          const currentPrice = fuelPrices.find(price => 
-            price.fuelTypeId === fuelType.id && 
-            price.isActive &&
-            new Date(price.effectiveDate) <= getBangkokTime() &&
-            (!price.endDate || new Date(price.endDate) > getBangkokTime())
-          )
-          
-          initialPriceData[fuelType.id] = {
-            price: currentPrice?.price || 0,
-            effectiveDate: getCurrentDateForInput(),
-            endDate: ''
-          }
-        })
-        setPriceFormData(initialPriceData)
+        return activeFuelTypes
       }
     } catch (error) {
       console.error('Error fetching fuel types:', error)
     }
-  }, [fuelPrices])
+    return []
+  }, [])
 
   const fetchFuelPrices = useCallback(async () => {
     try {
@@ -88,23 +72,56 @@ export default function FuelPriceManagementPage() {
       if (response.ok) {
         const data = await response.json()
         setFuelPrices(data)
+        return data
       }
     } catch (error) {
       console.error('Error fetching fuel prices:', error)
-    } finally {
-      setLoading(false)
     }
+    return []
+  }, [])
+
+  const initializePriceFormData = useCallback((fuelTypes: FuelType[], fuelPrices: FuelPrice[]) => {
+    const initialPriceData: { [key: string]: { price: number; effectiveDate: string; endDate: string } } = {}
+    fuelTypes.forEach((fuelType: FuelType) => {
+      const currentPrice = fuelPrices.find(price => 
+        price.fuelTypeId === fuelType.id && 
+        price.isActive &&
+        new Date(price.effectiveDate) <= getBangkokTime() &&
+        (!price.endDate || new Date(price.endDate) > getBangkokTime())
+      )
+      
+      initialPriceData[fuelType.id] = {
+        price: currentPrice?.price || 0,
+        effectiveDate: getCurrentDateForInput(),
+        endDate: ''
+      }
+    })
+    setPriceFormData(initialPriceData)
   }, [])
 
   useEffect(() => {
-    fetchFuelPrices()
-  }, [fetchFuelPrices])
-
-  useEffect(() => {
-    if (fuelPrices.length > 0) {
-      fetchFuelTypes()
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        // โหลดข้อมูลทั้งสองแบบพร้อมกัน
+        const [fuelTypesData, fuelPricesData] = await Promise.all([
+          fetchFuelTypes(),
+          fetchFuelPrices()
+        ])
+        
+        // กำหนดค่าเริ่มต้นสำหรับฟอร์มราคา
+        if (fuelTypesData.length > 0) {
+          initializePriceFormData(fuelTypesData, fuelPricesData)
+        }
+      } catch (error) {
+        console.error('Error loading data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [fuelPrices, fetchFuelTypes])
+
+    loadData()
+  }, [fetchFuelTypes, fetchFuelPrices, initializePriceFormData])
 
   const handlePriceUpdate = async (fuelTypeId: string) => {
     const formData = priceFormData[fuelTypeId]
@@ -251,7 +268,7 @@ export default function FuelPriceManagementPage() {
       <div className="p-6 flex items-center justify-center">
         <div className="text-center">
           <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
-          <p>กำลังโหลดข้อมูลราคาน้ำมัน...</p>
+          <p>กำลังโหลดข้อมูลราคาเชื้อเพลิง...</p>
         </div>
       </div>
     )
@@ -261,9 +278,8 @@ export default function FuelPriceManagementPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <Fuel className="w-8 h-8 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold">จัดการราคาน้ำมัน</h1>
+            <h1 className="text-2xl font-bold">จัดการราคาเชื้อเพลิง</h1>
             <p className="text-gray-600">กำหนดและควบคุมราคาเชื้อเพลิงแต่ละประเภท</p>
           </div>
         </div>
