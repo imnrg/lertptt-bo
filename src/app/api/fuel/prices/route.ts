@@ -100,6 +100,19 @@ export async function POST(request: NextRequest) {
             throw new Error(`ไม่พบประเภทเชื้อเพลิง ID: ${fuelTypeData.fuelTypeId}`)
           }
 
+          // Check if there's already a future price for this fuel type
+          const existingFuturePrice = await tx.fuelPrice.findFirst({
+            where: {
+              fuelTypeId: fuelTypeData.fuelTypeId,
+              isActive: true,
+              effectiveDate: { gt: getBangkokTime() }
+            }
+          })
+
+          if (existingFuturePrice) {
+            throw new Error(`มีราคาในอนาคตของ ${fuelType.name} อยู่แล้ว กรุณาลบหรือรอให้มีผลก่อน`)
+          }
+
           // End current active price if exists
           await tx.fuelPrice.updateMany({
             where: {
@@ -167,6 +180,25 @@ export async function POST(request: NextRequest) {
       // Convert string dates to Bangkok timezone Date objects
       const effectiveDate = new Date(validatedData.effectiveDate)
       const endDate = validatedData.endDate ? new Date(validatedData.endDate) : undefined
+
+      // Check if there's already a future price for this fuel type
+      const existingFuturePrice = await prisma.fuelPrice.findFirst({
+        where: {
+          fuelTypeId: validatedData.fuelTypeId,
+          isActive: true,
+          effectiveDate: { gt: getBangkokTime() }
+        },
+        include: {
+          fuelType: true
+        }
+      })
+
+      if (existingFuturePrice) {
+        return NextResponse.json(
+          { error: `มีราคาในอนาคตของ ${existingFuturePrice.fuelType.name} อยู่แล้ว กรุณาลบหรือรอให้มีผลก่อน` },
+          { status: 400 }
+        )
+      }
 
       // Use transaction to ensure data consistency
       const result = await prisma.$transaction(async (tx) => {

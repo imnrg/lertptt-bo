@@ -6,7 +6,7 @@ import { getBangkokTime } from '@/lib/utils'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const priceId = params.id
+    const { id: priceId } = await params
 
     // ตรวจสอบว่าราคานี้มีอยู่จริงหรือไม่
     const existingPrice = await prisma.fuelPrice.findUnique({
