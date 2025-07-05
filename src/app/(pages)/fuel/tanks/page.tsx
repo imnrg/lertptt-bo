@@ -200,7 +200,7 @@ export default function TanksPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">จัดการถังเก็บน้ำมัน</h1>
+        <h1 className="text-2xl font-bold">จัดการถังเก็บน้ำมัน</h1>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           เพิ่มถัง
@@ -347,13 +347,13 @@ export default function TanksPage() {
           const isLowLevel = tank.currentLevel <= tank.minLevel
           
           return (
-            <Card key={tank.id} className={`${isLowLevel ? 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/20' : ''}`}>
+            <Card key={tank.id} className={`${isLowLevel ? 'border-red-300 bg-red-50' : ''}`}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">{tank.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{tank.code}</p>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">{tank.fuelType.name}</p>
+                    <p className="text-sm text-gray-600">{tank.code}</p>
+                    <p className="text-sm text-blue-600">{tank.fuelType.name}</p>
                   </div>
                   <div className="flex gap-1">
                     <Button size="sm" variant="outline" onClick={() => handleEdit(tank)}>
@@ -376,15 +376,15 @@ export default function TanksPage() {
                     <span>ระดับน้ำมัน</span>
                     <span>{fillPercentage.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div className="w-full bg-gray-200 rounded-full h-3">
                     <div 
                       className={`h-3 rounded-full ${
-                        isLowLevel ? 'bg-red-500 dark:bg-red-400' : 'bg-blue-500 dark:bg-blue-400'
+                        isLowLevel ? 'bg-red-500' : 'bg-blue-500'
                       }`}
                       style={{ width: `${Math.min(fillPercentage, 100)}%` }}
                     ></div>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <div className="flex justify-between text-xs text-gray-600 mt-1">
                     <span>{tank.currentLevel.toLocaleString()} ลิตร</span>
                     <span>{tank.capacity.toLocaleString()} ลิตร</span>
                   </div>
@@ -392,23 +392,23 @@ export default function TanksPage() {
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-muted-foreground">ขั้นต่ำ:</span>
+                    <span className="text-gray-600">ขั้นต่ำ:</span>
                     <span className="ml-1">{tank.minLevel.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">สูงสุด:</span>
+                    <span className="text-gray-600">สูงสุด:</span>
                     <span className="ml-1">{tank.maxLevel?.toLocaleString() || '-'}</span>
                   </div>
                 </div>
 
                 <div className="text-sm">
-                  <span className="text-muted-foreground">หัวจ่าย:</span>
+                  <span className="text-gray-600">หัวจ่าย:</span>
                   <span className="ml-1">{tank._count.dispensers} ตัว</span>
                 </div>
 
                 {tank.location && (
                   <div className="text-sm">
-                    <span className="text-muted-foreground">ตำแหน่ง:</span>
+                    <span className="text-gray-600">ตำแหน่ง:</span>
                     <span className="ml-1">{tank.location}</span>
                   </div>
                 )}
@@ -416,14 +416,14 @@ export default function TanksPage() {
                 <div className="flex justify-between items-center">
                   <span className={`px-2 py-1 rounded-full text-xs ${
                     tank.isActive 
-                      ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400' 
-                      : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400'
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
                   }`}>
                     {tank.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
                   </span>
                   
                   {isLowLevel && (
-                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 rounded-full text-xs">
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
                       ระดับต่ำ
                     </span>
                   )}

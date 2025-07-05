@@ -41,13 +41,13 @@ const shifts = [
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'ACTIVE':
-      return 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400'
+      return 'bg-green-100 text-green-800'
     case 'COMPLETED':
-      return 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400'
+      return 'bg-blue-100 text-blue-800'
     case 'CANCELLED':
-      return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400'
+      return 'bg-red-100 text-red-800'
     default:
-      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
@@ -70,8 +70,8 @@ export default function ShiftsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">จัดการกะงาน</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h1 className="text-2xl font-semibold text-gray-900">จัดการกะงาน</h1>
+          <p className="mt-2 text-sm text-gray-700">
             จัดการกะการทำงานและติดตามยอดขาย
           </p>
         </div>
@@ -93,17 +93,17 @@ export default function ShiftsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">1</div>
-              <div className="text-sm text-green-700 dark:text-green-300">กะที่กำลังทำงาน</div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-600">1</div>
+              <div className="text-sm text-green-700">กะที่กำลังทำงาน</div>
             </div>
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">฿12,000</div>
-              <div className="text-sm text-blue-700 dark:text-blue-300">ยอดขายกะปัจจุบัน</div>
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">฿12,000</div>
+              <div className="text-sm text-blue-700">ยอดขายกะปัจจุบัน</div>
             </div>
-            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">6 ชม.</div>
-              <div className="text-sm text-yellow-700 dark:text-yellow-300">เวลาที่ทำงานแล้ว</div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-2xl font-bold text-yellow-600">6 ชม.</div>
+              <div className="text-sm text-yellow-700">เวลาที่ทำงานแล้ว</div>
             </div>
           </div>
         </CardContent>

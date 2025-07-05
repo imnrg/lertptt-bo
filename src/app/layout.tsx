@@ -25,9 +25,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className="dark">
+    <html lang="th">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
           {children}
@@ -37,8 +37,8 @@ export default function RootLayout({
           toastOptions={{
             duration: 4000,
             style: {
-              background: 'hsl(var(--card))',
-              color: 'hsl(var(--card-foreground))',
+              background: '#363636',
+              color: '#fff',
             },
           }}
         />
