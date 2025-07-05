@@ -5,12 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
-import { DollarSign, Package, Fuel, Trash } from 'lucide-react'
-import { formatThaiDate, getCurrentDateForInput, inputDateToBangkokDate, getBangkokTime } from '@/lib/utils'
+import { DollarSign, Package, Fuel } from 'lucide-react'
+import { formatThaiDate, getCurrentDateForInput, inputDateToBangkokDate, getBangkokTime, handleNumericInputChange, safeNumberConversion } from '@/lib/utils'
 
 interface FuelType {
   id: string
@@ -18,6 +17,7 @@ interface FuelType {
   code: string
   description?: string
   isActive: boolean
+  createdAt: string
 }
 
 interface FuelPrice {
@@ -39,13 +39,14 @@ export default function FuelPriceManagementPage() {
   const { alertState, loadingState, showAlert, showLoading, hideLoading, closeAlert } = useAlert()
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [fuelPrices, setFuelPrices] = useState<FuelPrice[]>([])
+  const [historicalPrices, setHistoricalPrices] = useState<FuelPrice[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('current')
 
   // Price form data for all fuel types
   const [priceFormData, setPriceFormData] = useState<{
     [key: string]: {
-      price: number
+      price: string
     }
   }>({})
 
@@ -84,8 +85,22 @@ export default function FuelPriceManagementPage() {
     return []
   }, [])
 
+  const fetchHistoricalPrices = useCallback(async () => {
+    try {
+      const response = await fetch('/api/fuel/prices/history')
+      if (response.ok) {
+        const data = await response.json()
+        setHistoricalPrices(data)
+        return data
+      }
+    } catch (error) {
+      console.error('Error fetching historical prices:', error)
+    }
+    return []
+  }, [])
+
   const initializePriceFormData = useCallback((fuelTypes: FuelType[], fuelPrices: FuelPrice[]) => {
-    const initialPriceData: { [key: string]: { price: number } } = {}
+    const initialPriceData: { [key: string]: { price: string } } = {}
     fuelTypes.forEach((fuelType: FuelType) => {
       const currentPrice = fuelPrices.find(price => 
         price.fuelTypeId === fuelType.id && 
@@ -95,7 +110,7 @@ export default function FuelPriceManagementPage() {
       )
       
       initialPriceData[fuelType.id] = {
-        price: currentPrice?.price || 0
+        price: currentPrice?.price.toString() || ''
       }
     })
     setPriceFormData(initialPriceData)
@@ -105,10 +120,11 @@ export default function FuelPriceManagementPage() {
     const loadData = async () => {
       setLoading(true)
       try {
-        // โหลดข้อมูลทั้งสองแบบพร้อมกัน
-        const [fuelTypesData, fuelPricesData] = await Promise.all([
+        // โหลดข้อมูลทั้งสามแบบพร้อมกัน
+        const [fuelTypesData, fuelPricesData, historicalPricesData] = await Promise.all([
           fetchFuelTypes(),
-          fetchFuelPrices()
+          fetchFuelPrices(),
+          fetchHistoricalPrices()
         ])
         
         // กำหนดค่าเริ่มต้นสำหรับฟอร์มราคา
@@ -123,10 +139,13 @@ export default function FuelPriceManagementPage() {
     }
 
     loadData()
-  }, [fetchFuelTypes, fetchFuelPrices, initializePriceFormData])
+  }, [fetchFuelTypes, fetchFuelPrices, fetchHistoricalPrices, initializePriceFormData])
 
   const handleBulkPriceUpdate = async () => {
-    const validFormData = Object.entries(priceFormData).filter(([, data]) => data.price > 0)
+    const validFormData = Object.entries(priceFormData).filter(([, data]) => {
+      const priceValue = typeof data.price === 'string' ? data.price : data.price
+      return priceValue && safeNumberConversion(priceValue) > 0
+    })
     
     if (validFormData.length === 0) {
       showAlert('กรุณาระบุราคาอย่างน้อย 1 ประเภท', 'warning')
@@ -136,17 +155,11 @@ export default function FuelPriceManagementPage() {
     try {
       showLoading(`กำลังอัปเดตราคาเชื้อเพลิง ${validFormData.length} ประเภท...`)
       
-      // Convert input dates to Bangkok timezone
-      const effectiveDate = inputDateToBangkokDate(globalDateSettings.effectiveDate)
-      const endDate = globalDateSettings.endDate ? inputDateToBangkokDate(globalDateSettings.endDate) : undefined
-
       const bulkData = {
         fuelTypes: validFormData.map(([fuelTypeId, data]) => ({
           fuelTypeId,
-          price: Number(data.price)
-        })),
-        effectiveDate: effectiveDate.toISOString(),
-        endDate: endDate?.toISOString()
+          price: safeNumberConversion(data.price)
+        }))
       }
 
       const response = await fetch('/api/fuel/prices', {
@@ -158,7 +171,23 @@ export default function FuelPriceManagementPage() {
       })
 
       if (response.ok) {
-        await fetchFuelPrices()
+        // โหลดข้อมูลใหม่ทั้งราคาปัจจุบันและประวัติราคา
+        await Promise.all([fetchFuelPrices(), fetchHistoricalPrices()])
+        
+        // อัปเดตฟอร์มข้อมูลด้วยราคาใหม่
+        const updatedFuelTypes = await fetchFuelTypes()
+        const updatedFuelPrices = await fetchFuelPrices()
+        if (updatedFuelTypes.length > 0) {
+          initializePriceFormData(updatedFuelTypes, updatedFuelPrices)
+        }
+        
+        // เคลียร์ค่าใน input field ทั้งหมด
+        const clearedFormData: { [key: string]: { price: string } } = {}
+        fuelTypes.forEach((fuelType) => {
+          clearedFormData[fuelType.id] = { price: '' }
+        })
+        setPriceFormData(clearedFormData)
+        
         hideLoading()
         showAlert('อัปเดตราคาเชื้อเพลิงทั้งหมดสำเร็จ', 'success')
       } else {
@@ -173,30 +202,6 @@ export default function FuelPriceManagementPage() {
     }
   }
 
-  const handleCancelFuturePrice = async (priceId: string, fuelTypeName: string) => {
-    try {
-      showLoading('กำลังยกเลิกราคา...')
-      
-      const response = await fetch(`/api/fuel/prices/${priceId}`, {
-        method: 'DELETE',
-      })
-
-      if (response.ok) {
-        await fetchFuelPrices()
-        hideLoading()
-        showAlert(`ยกเลิกราคา ${fuelTypeName} สำเร็จ`, 'success')
-      } else {
-        const error = await response.json()
-        hideLoading()
-        showAlert(error.error || 'เกิดข้อผิดพลาดในการยกเลิกราคา', 'error')
-      }
-    } catch (error) {
-      console.error('Error canceling future price:', error)
-      hideLoading()
-      showAlert('เกิดข้อผิดพลาดในการยกเลิกราคา', 'error')
-    }
-  }
-
   const updatePriceFormData = (fuelTypeId: string, field: string, value: string | number) => {
     setPriceFormData(prev => ({
       ...prev,
@@ -205,6 +210,17 @@ export default function FuelPriceManagementPage() {
         [field]: value
       }
     }))
+  }
+
+  const handlePriceInputChange = (fuelTypeId: string, value: string) => {
+    handleNumericInputChange(value, (formattedValue) => {
+      updatePriceFormData(fuelTypeId, 'price', formattedValue)
+    }, {
+      allowNegative: false,
+      decimalPlaces: 2,
+      minValue: 0,
+      maxValue: 999.99
+    })
   }
 
   const updateGlobalDateSettings = (field: string, value: string) => {
@@ -223,30 +239,12 @@ export default function FuelPriceManagementPage() {
     })
   }
 
-  const getFuturePrices = () => {
-    const now = getBangkokTime()
-    return fuelPrices.filter(price => {
-      const effectiveDate = new Date(price.effectiveDate)
-      return effectiveDate > now && price.isActive
-    })
-  }
-
   const getHistoricalPrices = () => {
-    const now = getBangkokTime()
-    return fuelPrices.filter(price => {
-      const endDate = price.endDate ? new Date(price.endDate) : null
-      return endDate && endDate <= now
-    })
-  }
-
-  // ฟังก์ชันตรวจสอบว่าเชื้อเพลิงประเภทนั้นมีราคาในอนาคตอยู่แล้วหรือไม่
-  const hasFuturePrice = (fuelTypeId: string) => {
-    const now = getBangkokTime()
-    return fuelPrices.some(price => {
-      const effectiveDate = new Date(price.effectiveDate)
-      return price.fuelTypeId === fuelTypeId && 
-             effectiveDate > now && 
-             price.isActive
+    return historicalPrices.sort((a, b) => {
+      // เรียงตามวันที่สร้างล่าสุดก่อน
+      const dateA = new Date(a.createdAt)
+      const dateB = new Date(b.createdAt)
+      return dateB.getTime() - dateA.getTime()
     })
   }
 
@@ -287,7 +285,7 @@ export default function FuelPriceManagementPage() {
       </div>
 
       {/* สถิติราคาน้ำมันปัจจุบัน */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -296,17 +294,6 @@ export default function FuelPriceManagementPage() {
                 <p className="text-2xl font-bold">{getCurrentPrices().length}</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">ราคาในอนาคต</p>
-                <p className="text-2xl font-bold">{getFuturePrices().length}</p>
-              </div>
-              <Package className="w-8 h-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
@@ -328,12 +315,10 @@ export default function FuelPriceManagementPage() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
               อัปเดตราคาเชื้อเพลิง
             </CardTitle>
             <Button 
               onClick={handleBulkPriceUpdate} 
-              className="bg-blue-600 hover:bg-blue-700"
               disabled={loadingState.isLoading}
             >
               <Package className="w-4 h-4 mr-2" />
@@ -349,44 +334,16 @@ export default function FuelPriceManagementPage() {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Global Date Settings */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-blue-800">วันที่มีผล</label>
-                    <Input
-                      type="date"
-                      value={globalDateSettings.effectiveDate}
-                      onChange={(e) => updateGlobalDateSettings('effectiveDate', e.target.value)}
-                      disabled={loadingState.isLoading}
-                      className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-blue-800">วันที่สิ้นสุด (ไม่บังคับ)</label>
-                    <Input
-                      type="date"
-                      value={globalDateSettings.endDate}
-                      onChange={(e) => updateGlobalDateSettings('endDate', e.target.value)}
-                      disabled={loadingState.isLoading}
-                      className="border-blue-300 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <p className="text-xs text-blue-600 mt-1">หากไม่ระบุ ราคาจะมีผลต่อเนื่อง</p>
-                  </div>
-                </div>
-              </div>
-
               {/* Price Forms */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">ราคาเชื้อเพลิงแต่ละประเภท</h3>
+                <p>ราคา ณ วันที่ {fuelTypes.length > 0 ? formatThaiDate(fuelTypes[0].createdAt) : '-'}</p>
                 {fuelTypes.map((fuelType) => {
                   const currentPrice = getCurrentPrices().find(price => price.fuelTypeId === fuelType.id)
                   const formData = priceFormData[fuelType.id] || { price: 0 }
-                  const hasFuturePriceForThisType = hasFuturePrice(fuelType.id)
                   
                   return (
-                    <div key={fuelType.id} className={`border rounded-lg p-4 shadow-sm ${hasFuturePriceForThisType ? 'bg-gray-50 border-gray-300' : 'bg-white'}`}>
+                    <div key={fuelType.id} className="border rounded-lg p-4 shadow-sm bg-white">
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
                         <div className="lg:col-span-1">
                           <div className="space-y-1">
@@ -395,11 +352,6 @@ export default function FuelPriceManagementPage() {
                               <span className={`inline-block px-2 py-1 rounded-full text-xs ${getFuelTypeColor(fuelType.code)}`}>
                                 {fuelType.code} 
                               </span>
-                              {hasFuturePriceForThisType && (
-                                <span className="inline-block px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">
-                                  มีราคาในอนาคต
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>                        
@@ -411,18 +363,12 @@ export default function FuelPriceManagementPage() {
                         <div>
                           <label className="block text-sm font-medium mb-1">ราคาใหม่ (บาท/ลิตร)</label>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={formData.price}
-                            onChange={(e) => updatePriceFormData(fuelType.id, 'price', Number(e.target.value))}
+                            type="text"
+                            value={typeof formData.price === 'string' ? formData.price : formData.price}
+                            onChange={(e) => handlePriceInputChange(fuelType.id, e.target.value)}
                             placeholder="0.00"
-                            disabled={loadingState.isLoading || hasFuturePriceForThisType}
-                            className={hasFuturePriceForThisType ? 'bg-gray-100 cursor-not-allowed' : ''}
+                            disabled={loadingState.isLoading}
                           />
-                          {hasFuturePriceForThisType && (
-                            <p className="text-xs text-orange-600 mt-1">ไม่สามารถอัปเดตได้ เนื่องจากมีราคาในอนาคตอยู่แล้ว</p>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -435,171 +381,52 @@ export default function FuelPriceManagementPage() {
       </Card>
 
       {/* Price Tables */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="current">ราคาปัจจุบัน</TabsTrigger>
-          <TabsTrigger value="future">ราคาในอนาคต</TabsTrigger>
-          <TabsTrigger value="history">ประวัติราคา</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="current">
-          <Card>
-            <CardHeader>
-              <CardTitle>ราคาเชื้อเพลิงปัจจุบัน</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {getCurrentPrices().length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Fuel className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>ไม่มีราคาเชื้อเพลิงปัจจุบัน</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                      <TableHead>รหัส</TableHead>
-                      <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
-                      <TableHead>วันที่มีผล</TableHead>
-                      <TableHead>วันที่สิ้นสุด</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getCurrentPrices().map((price) => (
-                      <TableRow key={price.id}>
-                        <TableCell className="font-medium">{price.fuelType.name}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-sm ${getFuelTypeColor(price.fuelType.code)}`}>
-                            {price.fuelType.code}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-lg">
-                          ฿{price.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {formatThaiDate(price.effectiveDate)}
-                        </TableCell>
-                        <TableCell>
-                          {price.endDate ? formatThaiDate(price.endDate) : 'ไม่กำหนด'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="future">
-          <Card>
-            <CardHeader>
-              <CardTitle>ราคาเชื้อเพลิงในอนาคต</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {getFuturePrices().length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Fuel className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>ไม่มีราคาเชื้อเพลิงที่กำหนดไว้ในอนาคต</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                      <TableHead>รหัส</TableHead>
-                      <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
-                      <TableHead>วันที่มีผล</TableHead>
-                      <TableHead>วันที่สิ้นสุด</TableHead>
-                      <TableHead className="text-center">จัดการ</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getFuturePrices().map((price) => (
-                      <TableRow key={price.id}>
-                        <TableCell className="font-medium">{price.fuelType.name}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-sm ${getFuelTypeColor(price.fuelType.code)}`}>
-                            {price.fuelType.code}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-lg">
-                          ฿{price.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {formatThaiDate(price.effectiveDate)}
-                        </TableCell>
-                        <TableCell>
-                          {price.endDate ? formatThaiDate(price.endDate) : 'ไม่กำหนด'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button 
-                            onClick={() => handleCancelFuturePrice(price.id, price.fuelType.name)} 
-                            variant="destructive"
-                            size="icon"
-                            disabled={loadingState.isLoading}
-                          >
-                            <Trash className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="history">
-          <Card>
-            <CardHeader>
-              <CardTitle>ประวัติราคาเชื้อเพลิง</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {getHistoricalPrices().length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Fuel className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>ไม่มีประวัติราคาเชื้อเพลิง</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                      <TableHead>รหัส</TableHead>
-                      <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
-                      <TableHead>วันที่มีผล</TableHead>
-                      <TableHead>วันที่สิ้นสุด</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getHistoricalPrices().map((price) => (
-                      <TableRow key={price.id}>
-                        <TableCell className="font-medium">{price.fuelType.name}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-sm ${getFuelTypeColor(price.fuelType.code)}`}>
-                            {price.fuelType.code}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ฿{price.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          {formatThaiDate(price.effectiveDate)}
-                        </TableCell>
-                        <TableCell>
-                          {price.endDate ? formatThaiDate(price.endDate) : 'ไม่กำหนด'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <CardTitle>ประวัติราคาเชื้อเพลิง</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {getHistoricalPrices().length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Fuel className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>ไม่มีประวัติราคาเชื้อเพลิง</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ประเภทเชื้อเพลิง</TableHead>
+                  <TableHead>รหัส</TableHead>
+                  <TableHead className="text-right">ราคา (บาท/ลิตร)</TableHead>
+                  <TableHead>วันที่มีผล</TableHead>
+                  <TableHead>วันที่สิ้นสุด</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {getHistoricalPrices().map((price) => (
+                  <TableRow key={price.id}>
+                    <TableCell className="font-medium">{price.fuelType.name}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-sm ${getFuelTypeColor(price.fuelType.code)}`}>
+                        {price.fuelType.code}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      ฿{price.price.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {formatThaiDate(price.effectiveDate)}
+                    </TableCell>
+                    <TableCell>
+                      {price.endDate ? formatThaiDate(price.endDate) : 'ไม่กำหนด'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Alert Modal */}
       <AlertModal

@@ -8,8 +8,6 @@ import { getBangkokTime } from '@/lib/utils'
 const fuelPriceSchema = z.object({
   fuelTypeId: z.string().min(1, 'ต้องระบุประเภทเชื้อเพลิง'),
   price: z.number().min(0, 'ราคาต้องมากกว่าหรือเท่ากับ 0'),
-  effectiveDate: z.string().min(1, 'ต้องระบุวันที่มีผล'),
-  endDate: z.string().optional(),
 })
 
 const bulkFuelPriceSchema = z.object({
@@ -17,8 +15,6 @@ const bulkFuelPriceSchema = z.object({
     fuelTypeId: z.string().min(1, 'ต้องระบุประเภทเชื้อเพลิง'),
     price: z.number().min(0, 'ราคาต้องมากกว่าหรือเท่ากับ 0'),
   })).min(1, 'ต้องมีประเภทเชื้อเพลิงอย่างน้อย 1 รายการ'),
-  effectiveDate: z.string().min(1, 'ต้องระบุวันที่มีผล'),
-  endDate: z.string().optional(),
 })
 
 export async function GET() {
@@ -28,7 +24,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // ดึงเฉพาะราคาปัจจุบันที่มีผล
+    const now = getBangkokTime()
     const prices = await prisma.fuelPrice.findMany({
+      where: {
+        isActive: true,
+        effectiveDate: { lte: now },
+        OR: [
+          { endDate: null },
+          { endDate: { gt: now } }
+        ]
+      },
       include: {
         fuelType: {
           select: {
@@ -79,9 +85,8 @@ export async function POST(request: NextRequest) {
       // Validate bulk data
       const validatedData = bulkFuelPriceSchema.parse(body)
       
-      // Convert string dates to Bangkok timezone Date objects
-      const effectiveDate = new Date(validatedData.effectiveDate)
-      const endDate = validatedData.endDate ? new Date(validatedData.endDate) : undefined
+      // ใช้วันที่ปัจจุบันเป็นวันที่มีผล
+      const effectiveDate = getBangkokTime()
 
       // Use transaction for bulk update
       const result = await prisma.$transaction(async (tx) => {
@@ -100,19 +105,6 @@ export async function POST(request: NextRequest) {
             throw new Error(`ไม่พบประเภทเชื้อเพลิง ID: ${fuelTypeData.fuelTypeId}`)
           }
 
-          // Check if there's already a future price for this fuel type
-          const existingFuturePrice = await tx.fuelPrice.findFirst({
-            where: {
-              fuelTypeId: fuelTypeData.fuelTypeId,
-              isActive: true,
-              effectiveDate: { gt: getBangkokTime() }
-            }
-          })
-
-          if (existingFuturePrice) {
-            throw new Error(`มีราคาในอนาคตของ ${fuelType.name} อยู่แล้ว กรุณาลบหรือรอให้มีผลก่อน`)
-          }
-
           // End current active price if exists
           await tx.fuelPrice.updateMany({
             where: {
@@ -120,25 +112,25 @@ export async function POST(request: NextRequest) {
               isActive: true,
               OR: [
                 { endDate: null },
-                { endDate: { gt: getBangkokTime() } }
+                { endDate: { gt: effectiveDate } }
               ]
             },
             data: {
               endDate: effectiveDate,
-              updatedAt: getBangkokTime()
+              updatedAt: effectiveDate
             }
           })
 
-          // Create new price
+          // Create new price with current date
           const newPrice = await tx.fuelPrice.create({
             data: {
               fuelTypeId: fuelTypeData.fuelTypeId,
               price: fuelTypeData.price,
               effectiveDate,
-              endDate,
+              endDate: null, // ไม่มีวันสิ้นสุด
               isActive: true,
-              createdAt: getBangkokTime(),
-              updatedAt: getBangkokTime()
+              createdAt: effectiveDate,
+              updatedAt: effectiveDate
             },
             include: {
               fuelType: {
@@ -177,28 +169,8 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Convert string dates to Bangkok timezone Date objects
-      const effectiveDate = new Date(validatedData.effectiveDate)
-      const endDate = validatedData.endDate ? new Date(validatedData.endDate) : undefined
-
-      // Check if there's already a future price for this fuel type
-      const existingFuturePrice = await prisma.fuelPrice.findFirst({
-        where: {
-          fuelTypeId: validatedData.fuelTypeId,
-          isActive: true,
-          effectiveDate: { gt: getBangkokTime() }
-        },
-        include: {
-          fuelType: true
-        }
-      })
-
-      if (existingFuturePrice) {
-        return NextResponse.json(
-          { error: `มีราคาในอนาคตของ ${existingFuturePrice.fuelType.name} อยู่แล้ว กรุณาลบหรือรอให้มีผลก่อน` },
-          { status: 400 }
-        )
-      }
+      // ใช้วันที่ปัจจุบันเป็นวันที่มีผล
+      const effectiveDate = getBangkokTime()
 
       // Use transaction to ensure data consistency
       const result = await prisma.$transaction(async (tx) => {
@@ -209,25 +181,25 @@ export async function POST(request: NextRequest) {
             isActive: true,
             OR: [
               { endDate: null },
-              { endDate: { gt: getBangkokTime() } }
+              { endDate: { gt: effectiveDate } }
             ]
           },
           data: {
             endDate: effectiveDate,
-            updatedAt: getBangkokTime()
+            updatedAt: effectiveDate
           }
         })
 
-        // Create new price
+        // Create new price with current date
         const newPrice = await tx.fuelPrice.create({
           data: {
             fuelTypeId: validatedData.fuelTypeId,
             price: validatedData.price,
             effectiveDate,
-            endDate,
+            endDate: null, // ไม่มีวันสิ้นสุด
             isActive: true,
-            createdAt: getBangkokTime(),
-            updatedAt: getBangkokTime()
+            createdAt: effectiveDate,
+            updatedAt: effectiveDate
           },
           include: {
             fuelType: {

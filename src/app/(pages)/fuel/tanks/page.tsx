@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
+import { handleNumericInputChange, safeNumberConversion } from '@/lib/utils'
 import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
 
 interface Tank {
@@ -54,9 +55,9 @@ export default function TanksPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    capacity: 0,
-    currentLevel: 0,
-    minLevel: 0,
+    capacity: '',
+    currentLevel: '',
+    minLevel: '',
     fuelTypeId: '',
     isActive: true
   })
@@ -109,10 +110,13 @@ export default function TanksPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
-          capacity: Number(formData.capacity),
-          currentLevel: Number(formData.currentLevel),
-          minLevel: Number(formData.minLevel),
+          name: formData.name,
+          code: formData.code,
+          capacity: safeNumberConversion(formData.capacity),
+          currentLevel: safeNumberConversion(formData.currentLevel),
+          minLevel: safeNumberConversion(formData.minLevel),
+          fuelTypeId: formData.fuelTypeId,
+          isActive: formData.isActive,
         }),
       })
 
@@ -138,9 +142,9 @@ export default function TanksPage() {
     setFormData({
       name: tank.name,
       code: tank.code,
-      capacity: tank.capacity,
-      currentLevel: tank.currentLevel,
-      minLevel: tank.minLevel,
+      capacity: tank.capacity.toString(),
+      currentLevel: tank.currentLevel.toString(),
+      minLevel: tank.minLevel.toString(),
       fuelTypeId: tank.fuelTypeId,
       isActive: tank.isActive
     })
@@ -185,11 +189,44 @@ export default function TanksPage() {
     setFormData({
       name: '',
       code: '',
-      capacity: 0,
-      currentLevel: 0,
-      minLevel: 0,
+      capacity: '',
+      currentLevel: '',
+      minLevel: '',
       fuelTypeId: '',
       isActive: true
+    })
+  }
+
+  const handleCapacityChange = (value: string) => {
+    handleNumericInputChange(value, (formattedValue) => {
+      setFormData({ ...formData, capacity: formattedValue })
+    }, {
+      allowNegative: false,
+      decimalPlaces: 0,
+      minValue: 0,
+      maxValue: 999999
+    })
+  }
+
+  const handleCurrentLevelChange = (value: string) => {
+    handleNumericInputChange(value, (formattedValue) => {
+      setFormData({ ...formData, currentLevel: formattedValue })
+    }, {
+      allowNegative: false,
+      decimalPlaces: 0,
+      minValue: 0,
+      maxValue: safeNumberConversion(formData.capacity) || 999999
+    })
+  }
+
+  const handleMinLevelChange = (value: string) => {
+    handleNumericInputChange(value, (formattedValue) => {
+      setFormData({ ...formData, minLevel: formattedValue })
+    }, {
+      allowNegative: false,
+      decimalPlaces: 0,
+      minValue: 0,
+      maxValue: safeNumberConversion(formData.capacity) || 999999
     })
   }
 
@@ -277,36 +314,33 @@ export default function TanksPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">ความจุ (ลิตร)</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: Number(e.target.value) })}
+                    onChange={(e) => handleCapacityChange(e.target.value)}
                     placeholder="50000"
                     required
-                    min="0"
                     disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">ระดับปัจจุบัน (ลิตร)</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.currentLevel}
-                    onChange={(e) => setFormData({ ...formData, currentLevel: Number(e.target.value) })}
+                    onChange={(e) => handleCurrentLevelChange(e.target.value)}
                     placeholder="25000"
                     required
-                    min="0"
                     disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">ระดับขั้นต่ำ (ลิตร)</label>
                   <Input
-                    type="number"
+                    type="text"
                     value={formData.minLevel}
-                    onChange={(e) => setFormData({ ...formData, minLevel: Number(e.target.value) })}
+                    onChange={(e) => handleMinLevelChange(e.target.value)}
                     placeholder="5000"
                     required
-                    min="0"
                     disabled={loadingState.isLoading}
                   />
                 </div>

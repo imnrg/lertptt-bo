@@ -36,81 +36,47 @@ export async function DELETE(
       )
     }
 
-    // ตรวจสอบว่าเป็นราคาในอนาคตหรือไม่
+    // ตรวจสอบว่าเป็นราคาปัจจุบันหรือไม่
     const now = getBangkokTime()
     const effectiveDate = new Date(existingPrice.effectiveDate)
 
-    if (effectiveDate <= now) {
+    if (effectiveDate > now) {
       return NextResponse.json(
-        { error: 'ไม่สามารถยกเลิกราคาที่มีผลแล้วหรือราคาปัจจุบัน' },
+        { error: 'ไม่สามารถลบราคาในอนาคตได้ ระบบรองรับเฉพาะการแก้ไขราคาปัจจุบัน' },
         { status: 400 }
       )
     }
 
-    // ใช้ transaction เพื่อจัดการทั้งการลบราคาในอนาคตและปรับปรุงราคาปัจจุบัน
-    const result = await prisma.$transaction(async (tx) => {
-      // ลบราคาในอนาคต
-      await tx.fuelPrice.update({
-        where: { id: priceId },
-        data: {
-          isActive: false,
-          updatedAt: now
-        }
-      })
+    if (effectiveDate < now) {
+      return NextResponse.json(
+        { error: 'ไม่สามารถลบราคาในอดีตได้' },
+        { status: 400 }
+      )
+    }
 
-      // หาราคาปัจจุบันของประเภทเชื้อเพลิงเดียวกัน
-      const currentPrice = await tx.fuelPrice.findFirst({
-        where: {
-          fuelTypeId: existingPrice.fuelTypeId,
-          isActive: true,
-          effectiveDate: { lte: now },
-          endDate: { equals: effectiveDate } // ราคาที่มีวันสิ้นสุดเท่ากับวันที่มีผลของราคาที่ยกเลิก
-        },
-        orderBy: { effectiveDate: 'desc' }
-      })
-
-      // ถ้าพบราคาปัจจุบันที่มีวันสิ้นสุดตรงกับวันที่มีผลของราคาที่ยกเลิก
-      // ให้ปรับปรุงวันสิ้นสุดให้เป็น null (ไม่มีกำหนด)
-      if (currentPrice) {
-        await tx.fuelPrice.update({
-          where: { id: currentPrice.id },
-          data: {
-            endDate: null,
-            updatedAt: now
-          }
-        })
-        
-        return {
-          canceled: existingPrice,
-          updated: currentPrice
-        }
-      }
-
-      return {
-        canceled: existingPrice,
-        updated: null
+    // ลบราคาปัจจุบัน (ราคาที่มีผลในวันนี้)
+    await prisma.fuelPrice.update({
+      where: { id: priceId },
+      data: {
+        isActive: false,
+        updatedAt: now
       }
     })
 
     return NextResponse.json({ 
-      message: `ยกเลิกราคา ${existingPrice.fuelType.name} สำเร็จ`,
-      canceledPrice: {
+      message: `ลบราคา ${existingPrice.fuelType.name} สำเร็จ`,
+      deletedPrice: {
         id: existingPrice.id,
         fuelTypeName: existingPrice.fuelType.name,
         price: existingPrice.price,
         effectiveDate: existingPrice.effectiveDate
-      },
-      updatedCurrentPrice: result.updated ? {
-        id: result.updated.id,
-        endDate: null,
-        message: 'ปรับปรุงวันสิ้นสุดของราคาปัจจุบันเป็นไม่มีกำหนดแล้ว'
-      } : null
+      }
     })
 
   } catch (error) {
-    console.error('Error canceling future price:', error)
+    console.error('Error deleting current price:', error)
     return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการยกเลิกราคา' },
+      { error: 'เกิดข้อผิดพลาดในการลบราคา' },
       { status: 500 }
     )
   }
