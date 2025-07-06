@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -83,13 +83,7 @@ export default function UsersPage() {
   const canAccess = session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER'
   const isAdmin = session?.user?.role === 'ADMIN'
 
-  useEffect(() => {
-    if (canAccess) {
-      fetchUsers()
-    }
-  }, [canAccess])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       console.log('Fetching users...') // Debug log
       console.log('Session:', session) // Debug session
@@ -113,7 +107,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [canAccess, session, showAlert])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()

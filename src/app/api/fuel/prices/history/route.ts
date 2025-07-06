@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getBangkokTime } from '@/lib/utils'
 
 export async function GET() {
   try {
@@ -13,7 +12,6 @@ export async function GET() {
 
     // ดึงประวัติราคาที่ไม่ใช่ราคาปัจจุบัน (ที่มี endDate หรือ isActive = false)
     // จำกัดผลลัพธ์เพียง 10 รายการล่าสุด
-    const now = getBangkokTime()
     const historicalPrices = await prisma.fuelPrice.findMany({
       where: {
         OR: [

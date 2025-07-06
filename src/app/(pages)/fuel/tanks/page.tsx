@@ -18,8 +18,7 @@ import {
   Search,
   BarChart3,
   AlertTriangle,
-  CheckCircle,
-  XCircle
+  CheckCircle
 } from 'lucide-react'
 
 interface Tank {
@@ -256,7 +255,6 @@ export default function TanksPage() {
   const activeTanks = tanks.filter(tank => tank.isActive).length
   const lowLevelTanks = tanks.filter(tank => tank.currentLevel <= tank.minLevel).length
   const totalCapacity = tanks.reduce((sum, tank) => sum + tank.capacity, 0)
-  const totalCurrentLevel = tanks.reduce((sum, tank) => sum + tank.currentLevel, 0)
 
   if (loading) {
     return (
