@@ -272,10 +272,10 @@ export default function FuelPriceManagementPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
-          <p>กำลังโหลดข้อมูลราคาเชื้อเพลิง...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     )
@@ -407,8 +407,8 @@ export default function FuelPriceManagementPage() {
       {/* Update Price Modal */}
       {showUpdateModal && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-4xl max-h-[80vh] overflow-hidden">
-            <CardHeader className="border-b">
+          <Card className="w-full max-w-4xl min-h-[50vh] max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="border-b flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Edit className="w-5 h-5" />
@@ -424,10 +424,10 @@ export default function FuelPriceManagementPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6 overflow-y-auto">
+            <CardContent className="p-6 flex-1 overflow-y-auto">
               <div className="space-y-6">
                 {/* Search within modal */}
-                <div>
+                <div className="flex-shrink-0">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     ค้นหาเชื้อเพลิง
                   </label>
@@ -444,8 +444,8 @@ export default function FuelPriceManagementPage() {
                 </div>
 
                 {/* Price Forms */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-4 flex-1">
+                  <div className="flex items-center justify-between flex-shrink-0">
                     <h3 className="text-lg font-medium text-gray-900">ราคาเชื้อเพลิงแต่ละประเภท</h3>
                     <p className="text-sm text-gray-500">
                       ราคา ณ วันที่ {formatThaiDate(new Date().toISOString())}
@@ -466,7 +466,7 @@ export default function FuelPriceManagementPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                    <div className="space-y-4 min-h-[200px]">
                       {filteredFuelTypesForModal.map((fuelType) => {
                         const currentPrice = getCurrentPrices().find(price => price.fuelTypeId === fuelType.id)
                         const formData = priceFormData[fuelType.id] || { price: '' }
@@ -516,7 +516,7 @@ export default function FuelPriceManagementPage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-3 pt-4 border-t">
+                <div className="flex space-x-3 pt-4 border-t flex-shrink-0">
                   <Button 
                     onClick={handleBulkPriceUpdateInModal}
                     className="flex-1"

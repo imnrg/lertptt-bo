@@ -4,22 +4,21 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Fuel, 
   Search,
+  Plus,
+  Edit,
   Zap,
   CheckCircle,
   AlertTriangle,
+  Trash2,
   BarChart3
 } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface Dispenser {
   id: string
@@ -240,10 +239,10 @@ export default function DispensersPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
-          <p>กำลังโหลดข้อมูลหัวจ่าย...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     )

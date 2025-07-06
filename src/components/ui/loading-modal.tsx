@@ -1,7 +1,6 @@
 'use client'
 
 import { LoadingState } from '@/lib/use-alert'
-import { Loader2 } from 'lucide-react'
 
 interface LoadingModalProps {
   loadingState: LoadingState
@@ -19,7 +18,7 @@ export function LoadingModal({ loadingState }: LoadingModalProps) {
       <div className="relative bg-white rounded-lg shadow-xl p-8 max-w-sm mx-4">
         <div className="flex flex-col items-center space-y-4">
           {/* Spinner */}
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
           
           {/* Loading Text */}
           <div className="text-center">

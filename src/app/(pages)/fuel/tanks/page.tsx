@@ -258,10 +258,10 @@ export default function TanksPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Fuel className="w-8 h-8 mx-auto mb-4 animate-spin" />
-          <p>กำลังโหลดข้อมูลถัง...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">กำลังโหลดข้อมูล...</p>
         </div>
       </div>
     )

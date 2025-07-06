@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -83,11 +83,7 @@ export default function UsersPage() {
   const canAccess = session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER'
   const isAdmin = session?.user?.role === 'ADMIN'
 
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     // Don't fetch if session is not ready or user doesn't have access
     if (!session || !canAccess) {
       setLoading(false)
@@ -115,14 +111,12 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [session, canAccess, showAlert])
 
   // Refetch when session or access permission changes
   useEffect(() => {
-    if (session) {
-      fetchUsers()
-    }
-  }, [session, canAccess])
+    fetchUsers()
+  }, [fetchUsers])
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -315,8 +309,8 @@ export default function UsersPage() {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="text-center">
-          <Users className="w-8 h-8 mx-auto mb-4 animate-spin" />
-          <p>กำลังโหลดข้อมูลผู้ใช้...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">กำลังโหลดข้อมูลผู้ใช้...</p>
         </div>
       </div>
     )
