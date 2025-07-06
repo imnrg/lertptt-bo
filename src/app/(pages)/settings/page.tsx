@@ -115,7 +115,7 @@ export default function SettingsPage() {
                 <input type="checkbox" defaultChecked className="rounded" />
               </div>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">แจ้งเตือนกะงานเริ่มต้น</label>
+                <label className="text-sm font-medium">แจ้งเตือนผลัดงานเริ่มต้น</label>
                 <input type="checkbox" className="rounded" />
               </div>
             </div>

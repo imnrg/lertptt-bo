@@ -32,7 +32,7 @@ const navigation = [
     ]
   },
   { name: 'จัดการสินค้า', href: '/products', icon: Package },
-  { name: 'จัดการกะงาน', href: '/shifts', icon: Clock },
+  { name: 'จัดการผลัดงาน', href: '/shifts', icon: Clock },
   { name: 'จัดการลูกหนี้', href: '/debtors', icon: Users },
   { name: 'จัดการผู้ใช้', href: '/users', icon: Users },
   { name: 'ตั้งค่า', href: '/settings', icon: Settings },

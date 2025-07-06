@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -83,11 +83,19 @@ export default function UsersPage() {
   const canAccess = session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER'
   const isAdmin = session?.user?.role === 'ADMIN'
 
-  const fetchUsers = useCallback(async () => {
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    // Don't fetch if session is not ready or user doesn't have access
+    if (!session || !canAccess) {
+      setLoading(false)
+      return
+    }
+
     try {
       console.log('Fetching users...') // Debug log
-      console.log('Session:', session) // Debug session
-      console.log('canAccess:', canAccess) // Debug access
       
       const response = await fetch('/api/users')
       console.log('Response status:', response.status) // Debug response
@@ -107,11 +115,14 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [canAccess, session, showAlert])
+  }
 
+  // Refetch when session or access permission changes
   useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+    if (session) {
+      fetchUsers()
+    }
+  }, [session, canAccess])
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -413,7 +424,6 @@ export default function UsersPage() {
                   <TableHead>ผู้ใช้</TableHead>
                   <TableHead>บทบาท</TableHead>
                   <TableHead>สถานะ</TableHead>
-                  <TableHead>กิจกรรม</TableHead>
                   <TableHead>วันที่สร้าง</TableHead>
                   {isAdmin && <TableHead>การจัดการ</TableHead>}
                 </TableRow>
@@ -446,11 +456,6 @@ export default function UsersPage() {
                         }`}>
                           {user.isActive ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm text-gray-900">
-                          กะงาน: {user._count.shifts} | ลูกหนี้: {user._count.debtorRecords}
-                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm text-gray-900">

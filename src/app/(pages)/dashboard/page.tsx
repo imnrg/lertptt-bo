@@ -22,7 +22,7 @@ const stats = [
     color: 'bg-yellow-500',
   },
   {
-    name: 'กะงานวันนี้',
+    name: 'ผลัดงานวันนี้',
     value: '3',
     icon: Clock,
     color: 'bg-purple-500',

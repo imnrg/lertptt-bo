@@ -70,15 +70,15 @@ export default function ShiftsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">จัดการกะงาน</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">จัดการผลัดงาน</h1>
           <p className="mt-2 text-sm text-gray-700">
-            จัดการกะการทำงานและติดตามยอดขาย
+            จัดการผลัดการทำงานและติดตามยอดขาย
           </p>
         </div>
         <Button asChild>
           <Link href="/shifts/new">
             <Plus className="mr-2 h-4 w-4" />
-            เพิ่มกะงาน
+            เพิ่มผลัดงาน
           </Link>
         </Button>
       </div>
@@ -88,18 +88,18 @@ export default function ShiftsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            กะงานที่กำลังทำงาน
+            ผลัดงานที่กำลังทำงาน
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">1</div>
-              <div className="text-sm text-green-700">กะที่กำลังทำงาน</div>
+              <div className="text-sm text-green-700">ผลัดที่กำลังทำงาน</div>
             </div>
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">฿12,000</div>
-              <div className="text-sm text-blue-700">ยอดขายกะปัจจุบัน</div>
+              <div className="text-sm text-blue-700">ยอดขายผลัดปัจจุบัน</div>
             </div>
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
               <div className="text-2xl font-bold text-yellow-600">6 ชม.</div>
@@ -112,7 +112,7 @@ export default function ShiftsPage() {
       {/* Shifts Table */}
       <Card>
         <CardHeader>
-          <CardTitle>รายการกะงาน</CardTitle>
+          <CardTitle>รายการผลัดงาน</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
