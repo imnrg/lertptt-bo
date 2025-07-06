@@ -7,15 +7,20 @@ import bcrypt from "bcryptjs"
 
 export async function GET() {
   try {
+    console.log('=== Users API GET called ===') // Debug log
+    
     const session = await getServerSession(authOptions)
+    console.log('Session in API:', session) // Debug session
     
     if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MANAGER")) {
+      console.log('Access denied - insufficient permissions') // Debug access
       return NextResponse.json(
         { error: "ไม่มีสิทธิ์ในการเข้าถึง" },
         { status: 403 }
       )
     }
 
+    console.log('Fetching users from database...') // Debug DB query
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -37,6 +42,9 @@ export async function GET() {
         createdAt: "desc"
       }
     })
+
+    console.log('Users found:', users.length) // Debug result count
+    console.log('Users data:', users) // Debug actual data
 
     return NextResponse.json(users)
   } catch (error) {

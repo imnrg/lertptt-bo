@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Table } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertModal } from '@/components/ui/alert-modal'
+import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { 
   Plus, 
@@ -21,7 +22,6 @@ import {
   Crown,
   User as UserIcon
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
 import { 
   CreateUserFormData, 
   ResetUserPasswordFormData,
@@ -65,7 +65,7 @@ const roleColors = {
 
 export default function UsersPage() {
   const { data: session } = useSession()
-  const { alertState, showAlert, showConfirm, closeAlert } = useAlert()
+  const { alertState, loadingState, showAlert, showLoading, hideLoading, showConfirm, closeAlert } = useAlert()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -91,15 +91,25 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
+      console.log('Fetching users...') // Debug log
+      console.log('Session:', session) // Debug session
+      console.log('canAccess:', canAccess) // Debug access
+      
       const response = await fetch('/api/users')
+      console.log('Response status:', response.status) // Debug response
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('Users data:', data) // Debug data
         setUsers(data)
       } else {
-        toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('API Error:', errorData) // Debug error
+        showAlert(`เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้: ${errorData.error || 'Unknown error'}`, 'error')
       }
-    } catch {
-      toast.error('เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้')
+    } catch (error) {
+      console.error('Fetch error:', error) // Debug catch error
+      showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -110,6 +120,8 @@ export default function UsersPage() {
     try {
       createUserSchema.parse(formData)
       
+      showLoading('กำลังสร้างผู้ใช้...')
+      
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,16 +129,19 @@ export default function UsersPage() {
       })
 
       if (response.ok) {
-        toast.success('สร้างผู้ใช้สำเร็จ')
+        hideLoading()
+        showAlert('สร้างผู้ใช้สำเร็จ', 'success')
         setShowCreateModal(false)
         setFormData({ role: 'USER', isActive: true })
         fetchUsers()
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการสร้างผู้ใช้')
+        hideLoading()
+        showAlert(errorData.error || 'เกิดข้อผิดพลาดในการสร้างผู้ใช้', 'error')
       }
     } catch {
-      toast.error('ข้อมูลไม่ถูกต้อง')
+      hideLoading()
+      showAlert('ข้อมูลไม่ถูกต้อง', 'error')
     }
   }
 
@@ -137,6 +152,8 @@ export default function UsersPage() {
     try {
       updateUserSchema.parse(formData)
       
+      showLoading('กำลังแก้ไขผู้ใช้...')
+      
       const response = await fetch(`/api/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -144,17 +161,20 @@ export default function UsersPage() {
       })
 
       if (response.ok) {
-        toast.success('แก้ไขผู้ใช้สำเร็จ')
+        hideLoading()
+        showAlert('แก้ไขผู้ใช้สำเร็จ', 'success')
         setShowEditModal(false)
         setSelectedUser(null)
         setFormData({ role: 'USER', isActive: true })
         fetchUsers()
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการแก้ไขผู้ใช้')
+        hideLoading()
+        showAlert(errorData.error || 'เกิดข้อผิดพลาดในการแก้ไขผู้ใช้', 'error')
       }
     } catch {
-      toast.error('ข้อมูลไม่ถูกต้อง')
+      hideLoading()
+      showAlert('ข้อมูลไม่ถูกต้อง', 'error')
     }
   }
 
@@ -163,18 +183,23 @@ export default function UsersPage() {
       `คุณต้องการลบผู้ใช้ ${user.name} หรือไม่?`,
       async () => {
         try {
+          showLoading('กำลังลบผู้ใช้...')
+          
           const response = await fetch(`/api/users/${user.id}`, {
             method: 'DELETE',
           })
 
           if (response.ok) {
+            hideLoading()
             showAlert('ลบผู้ใช้สำเร็จ', 'success')
             fetchUsers()
           } else {
             const errorData = await response.json()
+            hideLoading()
             showAlert(errorData.error || 'เกิดข้อผิดพลาดในการลบผู้ใช้', 'error')
           }
         } catch {
+          hideLoading()
           showAlert('เกิดข้อผิดพลาดในการลบผู้ใช้', 'error')
         }
       },
@@ -186,19 +211,24 @@ export default function UsersPage() {
 
   const handleToggleStatus = async (user: User) => {
     try {
+      showLoading(`กำลัง${user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}ผู้ใช้...`)
+      
       const response = await fetch(`/api/users/${user.id}/toggle-status`, {
         method: 'PATCH',
       })
 
       if (response.ok) {
-        toast.success(`${user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}ผู้ใช้สำเร็จ`)
+        hideLoading()
+        showAlert(`${user.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}ผู้ใช้สำเร็จ`, 'success')
         fetchUsers()
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้')
+        hideLoading()
+        showAlert(errorData.error || 'เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้', 'error')
       }
     } catch {
-      toast.error('เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้')
+      hideLoading()
+      showAlert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะผู้ใช้', 'error')
     }
   }
 
@@ -209,6 +239,8 @@ export default function UsersPage() {
     try {
       resetUserPasswordSchema.parse(resetPasswordData)
       
+      showLoading('กำลังรีเซ็ตรหัสผ่าน...')
+      
       const response = await fetch(`/api/users/${selectedUser.id}/reset-password`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -216,16 +248,19 @@ export default function UsersPage() {
       })
 
       if (response.ok) {
-        toast.success('รีเซ็ตรหัสผ่านสำเร็จ')
+        hideLoading()
+        showAlert('รีเซ็ตรหัสผ่านสำเร็จ', 'success')
         setShowResetPasswordModal(false)
         setSelectedUser(null)
         setResetPasswordData({})
       } else {
         const errorData = await response.json()
-        toast.error(errorData.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน')
+        hideLoading()
+        showAlert(errorData.error || 'เกิดข้อผิดพลาดในการรีเซ็ตรหัสผ่าน', 'error')
       }
     } catch {
-      toast.error('ข้อมูลไม่ถูกต้อง')
+      hideLoading()
+      showAlert('ข้อมูลไม่ถูกต้อง', 'error')
     }
   }
 
@@ -255,11 +290,13 @@ export default function UsersPage() {
 
   if (!canAccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
-          <p className="text-gray-600">คุณไม่มีสิทธิ์ในการเข้าถึงหน้าจัดการผู้ใช้</p>
+      <div className="p-6 flex items-center justify-center">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">ไม่มีสิทธิ์เข้าถึง</h2>
+            <p className="text-gray-600">คุณไม่มีสิทธิ์ในการเข้าถึงหน้าจัดการผู้ใช้</p>
+          </CardContent>
         </Card>
       </div>
     )
@@ -267,19 +304,24 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Users className="w-8 h-8 mx-auto mb-4 animate-spin" />
+          <p>กำลังโหลดข้อมูลผู้ใช้...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">จัดการผู้ใช้</h1>
-          <p className="text-gray-600">จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง</p>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">จัดการผู้ใช้</h1>
+            <p className="text-gray-600">จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง</p>
+          </div>
         </div>
         {isAdmin && (
           <Button onClick={() => setShowCreateModal(true)}>
@@ -289,176 +331,198 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Search */}
-      <Card className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            type="text"
-            placeholder="ค้นหาผู้ใช้..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </Card>
-
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="p-6">
-          <div className="flex items-center">
-            <Users className="h-8 w-8 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">ผู้ใช้ทั้งหมด</p>
-              <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ผู้ใช้ทั้งหมด</p>
+                <p className="text-2xl font-bold">{users.length}</p>
+              </div>
+              <Users className="w-8 h-8 text-blue-600" />
             </div>
-          </div>
+          </CardContent>
         </Card>
-        <Card className="p-6">
-          <div className="flex items-center">
-            <UserCheck className="h-8 w-8 text-green-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">ใช้งานอยู่</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.isActive).length}
-              </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ใช้งานอยู่</p>
+                <p className="text-2xl font-bold">{users.filter(u => u.isActive).length}</p>
+              </div>
+              <UserCheck className="w-8 h-8 text-green-600" />
             </div>
-          </div>
+          </CardContent>
         </Card>
-        <Card className="p-6">
-          <div className="flex items-center">
-            <Crown className="h-8 w-8 text-red-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">ผู้ดูแลระบบ</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.role === 'ADMIN').length}
-              </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ผู้ดูแลระบบ</p>
+                <p className="text-2xl font-bold">{users.filter(u => u.role === 'ADMIN').length}</p>
+              </div>
+              <Crown className="w-8 h-8 text-red-600" />
             </div>
-          </div>
+          </CardContent>
         </Card>
-        <Card className="p-6">
-          <div className="flex items-center">
-            <Shield className="h-8 w-8 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">ผู้จัดการ</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {users.filter(u => u.role === 'MANAGER').length}
-              </p>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ผู้จัดการ</p>
+                <p className="text-2xl font-bold">{users.filter(u => u.role === 'MANAGER').length}</p>
+              </div>
+              <Shield className="w-8 h-8 text-blue-600" />
             </div>
-          </div>
+          </CardContent>
         </Card>
       </div>
 
+      {/* Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            ค้นหาผู้ใช้
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input
+            type="text"
+            placeholder="ค้นหาชื่อ, ชื่อผู้ใช้, หรืออีเมล..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </CardContent>
+      </Card>
+
       {/* Users Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <Table>
-            <thead>
-              <tr>
-                <th>ผู้ใช้</th>
-                <th>บทบาท</th>
-                <th>สถานะ</th>
-                <th>กิจกรรม</th>
-                <th>วันที่สร้าง</th>
-                {isAdmin && <th>การจัดการ</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user) => {
-                const RoleIcon = roleIcons[user.role]
-                return (
-                  <tr key={user.id}>
-                    <td>
-                      <div>
-                        <div className="font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">@{user.username}</div>
-                        {user.email && (
-                          <div className="text-sm text-gray-500">{user.email}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
-                        <RoleIcon className="w-3 h-3 mr-1" />
-                        {roleLabels[user.role]}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.isActive
-                          ? 'text-green-800 bg-green-100'
-                          : 'text-red-800 bg-red-100'
-                      }`}>
-                        {user.isActive ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="text-sm text-gray-900">
-                        กะงาน: {user._count.shifts} | ลูกหนี้: {user._count.debtorRecords}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="text-sm text-gray-900">
-                        {new Date(user.createdAt).toLocaleDateString('th-TH')}
-                      </div>
-                    </td>
-                    {isAdmin && (
-                      <td>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditModal(user)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {user.id !== session?.user?.id && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleToggleStatus(user)}
-                              >
-                                {user.isActive ? (
-                                  <UserX className="h-4 w-4" />
-                                ) : (
-                                  <UserCheck className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openResetPasswordModal(user)}
-                              >
-                                <Key className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeleteUser(user)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+        <CardHeader>
+          <CardTitle>รายการผู้ใช้</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredUsers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>ไม่พบผู้ใช้</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ผู้ใช้</TableHead>
+                  <TableHead>บทบาท</TableHead>
+                  <TableHead>สถานะ</TableHead>
+                  <TableHead>กิจกรรม</TableHead>
+                  <TableHead>วันที่สร้าง</TableHead>
+                  {isAdmin && <TableHead>การจัดการ</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => {
+                  const RoleIcon = roleIcons[user.role]
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-gray-900">{user.name}</div>
+                          <div className="text-sm text-gray-500">@{user.username}</div>
+                          {user.email && (
+                            <div className="text-sm text-gray-500">{user.email}</div>
                           )}
                         </div>
-                      </td>
-                    )}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </Table>
-        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleColors[user.role]}`}>
+                          <RoleIcon className="w-3 h-3 mr-1" />
+                          {roleLabels[user.role]}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          user.isActive
+                            ? 'text-green-800 bg-green-100'
+                            : 'text-red-800 bg-red-100'
+                        }`}>
+                          {user.isActive ? 'ใช้งานอยู่' : 'ปิดใช้งาน'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-900">
+                          กะงาน: {user._count.shifts} | ลูกหนี้: {user._count.debtorRecords}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-900">
+                          {new Date(user.createdAt).toLocaleDateString('th-TH')}
+                        </div>
+                      </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEditModal(user)}
+                              disabled={loadingState.isLoading}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            {user.id !== session?.user?.id && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleToggleStatus(user)}
+                                  disabled={loadingState.isLoading}
+                                >
+                                  {user.isActive ? (
+                                    <UserX className="h-4 w-4" />
+                                  ) : (
+                                    <UserCheck className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openResetPasswordModal(user)}
+                                  disabled={loadingState.isLoading}
+                                >
+                                  <Key className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDeleteUser(user)}
+                                  className="text-red-600 hover:text-red-700"
+                                  disabled={loadingState.isLoading}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
       </Card>
 
       {/* Create User Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-4">เพิ่มผู้ใช้ใหม่</h2>
+            <CardHeader>
+              <CardTitle>เพิ่มผู้ใช้ใหม่</CardTitle>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handleCreateUser} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -469,6 +533,7 @@ export default function UsersPage() {
                     value={formData.username || ''}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -480,6 +545,7 @@ export default function UsersPage() {
                     value={formData.name || ''}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -490,6 +556,7 @@ export default function UsersPage() {
                     type="email"
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -501,6 +568,7 @@ export default function UsersPage() {
                     value={formData.password || ''}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -512,6 +580,7 @@ export default function UsersPage() {
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as 'ADMIN' | 'MANAGER' | 'USER' })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
+                    disabled={loadingState.isLoading}
                   >
                     <option value="USER">พนักงาน</option>
                     <option value="MANAGER">ผู้จัดการ</option>
@@ -524,13 +593,14 @@ export default function UsersPage() {
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     className="mr-2"
+                    disabled={loadingState.isLoading}
                   />
                   <label className="text-sm font-medium text-gray-700">
                     เปิดใช้งาน
                   </label>
                 </div>
                 <div className="flex space-x-3 pt-4">
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={loadingState.isLoading}>
                     สร้างผู้ใช้
                   </Button>
                   <Button
@@ -541,22 +611,25 @@ export default function UsersPage() {
                       setFormData({ role: 'USER', isActive: true })
                     }}
                     className="flex-1"
+                    disabled={loadingState.isLoading}
                   >
                     ยกเลิก
                   </Button>
                 </div>
               </form>
-            </div>
+            </CardContent>
           </Card>
         </div>
       )}
 
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-4">แก้ไขผู้ใช้</h2>
+            <CardHeader>
+              <CardTitle>แก้ไขผู้ใช้</CardTitle>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handleUpdateUser} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -567,6 +640,7 @@ export default function UsersPage() {
                     value={formData.username || ''}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -578,6 +652,7 @@ export default function UsersPage() {
                     value={formData.name || ''}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -588,6 +663,7 @@ export default function UsersPage() {
                     type="email"
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -599,6 +675,7 @@ export default function UsersPage() {
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as 'ADMIN' | 'MANAGER' | 'USER' })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
+                    disabled={loadingState.isLoading}
                   >
                     <option value="USER">พนักงาน</option>
                     <option value="MANAGER">ผู้จัดการ</option>
@@ -611,13 +688,14 @@ export default function UsersPage() {
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                     className="mr-2"
+                    disabled={loadingState.isLoading}
                   />
                   <label className="text-sm font-medium text-gray-700">
                     เปิดใช้งาน
                   </label>
                 </div>
                 <div className="flex space-x-3 pt-4">
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={loadingState.isLoading}>
                     บันทึก
                   </Button>
                   <Button
@@ -629,22 +707,25 @@ export default function UsersPage() {
                       setFormData({ role: 'USER', isActive: true })
                     }}
                     className="flex-1"
+                    disabled={loadingState.isLoading}
                   >
                     ยกเลิก
                   </Button>
                 </div>
               </form>
-            </div>
+            </CardContent>
           </Card>
         </div>
       )}
 
       {/* Reset Password Modal */}
       {showResetPasswordModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-md">
-            <div className="p-6">
-              <h2 className="text-lg font-semibold mb-4">รีเซ็ตรหัสผ่าน</h2>
+            <CardHeader>
+              <CardTitle>รีเซ็ตรหัสผ่าน</CardTitle>
+            </CardHeader>
+            <CardContent>
               <p className="text-gray-600 mb-4">
                 รีเซ็ตรหัสผ่านสำหรับ {selectedUser.name}
               </p>
@@ -658,6 +739,7 @@ export default function UsersPage() {
                     value={resetPasswordData.newPassword || ''}
                     onChange={(e) => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div>
@@ -669,10 +751,11 @@ export default function UsersPage() {
                     value={resetPasswordData.confirmPassword || ''}
                     onChange={(e) => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
                     required
+                    disabled={loadingState.isLoading}
                   />
                 </div>
                 <div className="flex space-x-3 pt-4">
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={loadingState.isLoading}>
                     รีเซ็ตรหัสผ่าน
                   </Button>
                   <Button
@@ -684,12 +767,13 @@ export default function UsersPage() {
                       setResetPasswordData({})
                     }}
                     className="flex-1"
+                    disabled={loadingState.isLoading}
                   >
                     ยกเลิก
                   </Button>
                 </div>
               </form>
-            </div>
+            </CardContent>
           </Card>
         </div>
       )}
@@ -706,6 +790,9 @@ export default function UsersPage() {
         onConfirm={alertState.onConfirm}
         showCancel={alertState.showCancel}
       />
+
+      {/* Loading Modal */}
+      <LoadingModal loadingState={loadingState} />
     </div>
   )
 }

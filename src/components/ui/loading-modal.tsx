@@ -13,7 +13,7 @@ export function LoadingModal({ loadingState }: LoadingModalProps) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-sm" />
       
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl p-8 max-w-sm mx-4">
