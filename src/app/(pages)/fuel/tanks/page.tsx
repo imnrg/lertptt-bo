@@ -10,7 +10,17 @@ import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { handleNumericInputChange, safeNumberConversion } from '@/lib/utils'
-import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Fuel, 
+  Search,
+  BarChart3,
+  AlertTriangle,
+  CheckCircle,
+  XCircle
+} from 'lucide-react'
 
 interface Tank {
   id: string
@@ -50,6 +60,7 @@ export default function TanksPage() {
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingTank, setEditingTank] = useState<Tank | null>(null)
   const [formData, setFormData] = useState({
@@ -234,6 +245,19 @@ export default function TanksPage() {
     return (current / capacity) * 100
   }
 
+  // Filter tanks based on search term
+  const filteredTanks = tanks.filter(tank =>
+    tank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tank.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    tank.fuelType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Calculate stats
+  const activeTanks = tanks.filter(tank => tank.isActive).length
+  const lowLevelTanks = tanks.filter(tank => tank.currentLevel <= tank.minLevel).length
+  const totalCapacity = tanks.reduce((sum, tank) => sum + tank.capacity, 0)
+  const totalCurrentLevel = tanks.reduce((sum, tank) => sum + tank.currentLevel, 0)
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -247,128 +271,85 @@ export default function TanksPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">จัดการถังเก็บน้ำมัน</h1>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">จัดการถังเก็บน้ำมัน</h1>
+            <p className="text-gray-600">จัดการถังเก็บเชื้อเพลิงและตรวจสอบระดับน้ำมัน</p>
+          </div>
+        </div>
         <Button onClick={() => setShowForm(true)} disabled={loadingState.isLoading}>
-          <Plus className="w-4 h-4 mr-2" />
-          เพิ่มถัง
+          <Plus className="mr-2 h-4 w-4" />
+          เพิ่มถังใหม่
         </Button>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingTank ? 'แก้ไขถัง' : 'เพิ่มถัง'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">ชื่อถัง</label>
-                  <Input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="เช่น ถังที่ 1"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">รหัสถัง</label>
-                  <Input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="เช่น TANK_01"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-              </div>
-
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium mb-1">ประเภทเชื้อเพลิง</label>
-                <Select
-                  value={formData.fuelTypeId}
-                  onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
-                  disabled={loadingState.isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกประเภทเชื้อเพลิง" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fuelTypes.map((fuelType) => (
-                      <SelectItem key={fuelType.id} value={fuelType.id}>
-                        {fuelType.name} ({fuelType.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm text-gray-600">ถังทั้งหมด</p>
+                <p className="text-2xl font-bold">{tanks.length}</p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">ความจุ (ลิตร)</label>
-                  <Input
-                    type="text"
-                    value={formData.capacity}
-                    onChange={(e) => handleCapacityChange(e.target.value)}
-                    placeholder="50000"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">ระดับปัจจุบัน (ลิตร)</label>
-                  <Input
-                    type="text"
-                    value={formData.currentLevel}
-                    onChange={(e) => handleCurrentLevelChange(e.target.value)}
-                    placeholder="25000"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">ระดับขั้นต่ำ (ลิตร)</label>
-                  <Input
-                    type="text"
-                    value={formData.minLevel}
-                    onChange={(e) => handleMinLevelChange(e.target.value)}
-                    placeholder="5000"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  disabled={loadingState.isLoading}
-                />
-                <label htmlFor="isActive" className="text-sm font-medium">เปิดใช้งาน</label>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={loadingState.isLoading}>
-                  {editingTank ? 'บันทึกการแก้ไข' : 'เพิ่มถัง'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCloseForm} disabled={loadingState.isLoading}>
-                  ยกเลิก
-                </Button>
-              </div>
-            </form>
+              <Fuel className="w-8 h-8 text-blue-600" />
+            </div>
           </CardContent>
         </Card>
-      )}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ใช้งานอยู่</p>
+                <p className="text-2xl font-bold">{activeTanks}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ระดับต่ำ</p>
+                <p className="text-2xl font-bold text-red-600">{lowLevelTanks}</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ความจุรวม</p>
+                <p className="text-2xl font-bold">{(totalCapacity / 1000).toFixed(0)}K ลิตร</p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            ค้นหาถัง
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input
+            type="text"
+            placeholder="ค้นหาชื่อถัง, รหัสถัง, หรือประเภทเชื้อเพลิง..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       {/* Tanks Table */}
       <Card>
@@ -376,29 +357,28 @@ export default function TanksPage() {
           <CardTitle>รายการถังเก็บน้ำมัน</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ชื่อถัง</TableHead>
-                <TableHead>รหัส</TableHead>
-                <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                <TableHead>ความจุ</TableHead>
-                <TableHead>ระดับปัจจุบัน</TableHead>
-                <TableHead>ระดับขั้นต่ำ</TableHead>
-                <TableHead>หัวจ่าย</TableHead>
-                <TableHead>สถานะ</TableHead>
-                <TableHead>การจัดการ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tanks.length === 0 ? (
+          {filteredTanks.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Fuel className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>ไม่พบถังที่ค้นหา</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    ไม่มีข้อมูลถัง
-                  </TableCell>
+                  <TableHead>ชื่อถัง</TableHead>
+                  <TableHead>รหัส</TableHead>
+                  <TableHead>ประเภทเชื้อเพลิง</TableHead>
+                  <TableHead>ความจุ</TableHead>
+                  <TableHead>ระดับปัจจุบัน</TableHead>
+                  <TableHead>ระดับขั้นต่ำ</TableHead>
+                  <TableHead>หัวจ่าย</TableHead>
+                  <TableHead>สถานะ</TableHead>
+                  <TableHead>การจัดการ</TableHead>
                 </TableRow>
-              ) : (
-                tanks.map((tank: Tank) => {
+              </TableHeader>
+              <TableBody>
+                {filteredTanks.map((tank: Tank) => {
                   const fillPercentage = calculateFillPercentage(tank.currentLevel, tank.capacity)
                   const isLowLevel = tank.currentLevel <= tank.minLevel
                   
@@ -456,33 +436,171 @@ export default function TanksPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex items-center space-x-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(tank)}
                             disabled={loadingState.isLoading}
                           >
-                            <Edit className="w-3 h-3" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="destructive"
+                            variant="outline"
                             onClick={() => handleDelete(tank)}
+                            className="text-red-600 hover:text-red-700"
                             disabled={loadingState.isLoading || tank._count.dispensers > 0}
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   )
-                })
-              )}
-            </TableBody>
-          </Table>
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle>
+                {editingTank ? 'แก้ไขถัง' : 'เพิ่มถังใหม่'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ชื่อถัง *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="เช่น ถังที่ 1"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      รหัสถัง *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      placeholder="เช่น TANK_01"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ประเภทเชื้อเพลิง *
+                  </label>
+                  <Select
+                    value={formData.fuelTypeId}
+                    onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
+                    disabled={loadingState.isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกประเภทเชื้อเพลิง" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fuelTypes.map((fuelType) => (
+                        <SelectItem key={fuelType.id} value={fuelType.id}>
+                          {fuelType.name} ({fuelType.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ความจุ (ลิตร) *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.capacity}
+                      onChange={(e) => handleCapacityChange(e.target.value)}
+                      placeholder="50000"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ระดับปัจจุบัน (ลิตร) *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.currentLevel}
+                      onChange={(e) => handleCurrentLevelChange(e.target.value)}
+                      placeholder="25000"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ระดับขั้นต่ำ (ลิตร) *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.minLevel}
+                      onChange={(e) => handleMinLevelChange(e.target.value)}
+                      placeholder="5000"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="mr-2"
+                    disabled={loadingState.isLoading}
+                  />
+                  <label className="text-sm font-medium text-gray-700">
+                    เปิดใช้งาน
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button type="submit" className="flex-1" disabled={loadingState.isLoading}>
+                    {editingTank ? 'บันทึกการแก้ไข' : 'เพิ่มถัง'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseForm}
+                    className="flex-1"
+                    disabled={loadingState.isLoading}
+                  >
+                    ยกเลิก
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Alert Modal */}
       <AlertModal

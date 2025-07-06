@@ -9,7 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
-import { Plus, Edit, Trash2, Fuel } from 'lucide-react'
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Fuel, 
+  Search,
+  Zap,
+  CheckCircle,
+  AlertTriangle,
+  BarChart3
+} from 'lucide-react'
 
 interface Dispenser {
   id: string
@@ -57,6 +67,7 @@ export default function DispensersPage() {
   const [tanks, setTanks] = useState<Tank[]>([])
   const [fuelTypes, setFuelTypes] = useState<FuelType[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingDispenser, setEditingDispenser] = useState<Dispenser | null>(null)
   const [formData, setFormData] = useState({
@@ -212,6 +223,21 @@ export default function DispensersPage() {
     })
   }
 
+  // Filter dispensers based on search term
+  const filteredDispensers = dispensers.filter(dispenser =>
+    dispenser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispenser.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispenser.tank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispenser.fuelType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  // Calculate stats
+  const activeDispensers = dispensers.filter(dispenser => dispenser.isActive).length
+  const lowLevelTanks = dispensers.filter(dispenser => {
+    const fillPercentage = (dispenser.tank.currentLevel / dispenser.tank.capacity) * 100
+    return fillPercentage <= 20
+  }).length
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -225,115 +251,85 @@ export default function DispensersPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">จัดการหัวจ่าย</h1>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">จัดการหัวจ่าย</h1>
+            <p className="text-gray-600">จัดการหัวจ่ายเชื้อเพลิงและการเชื่อมต่อถัง</p>
+          </div>
+        </div>
         <Button onClick={() => setShowForm(true)} disabled={loadingState.isLoading}>
-          <Plus className="w-4 h-4 mr-2" />
-          เพิ่มหัวจ่าย
+          <Plus className="mr-2 h-4 w-4" />
+          เพิ่มหัวจ่ายใหม่
         </Button>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingDispenser ? 'แก้ไขหัวจ่าย' : 'เพิ่มหัวจ่าย'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">ชื่อหัวจ่าย</label>
-                  <Input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="เช่น หัวจ่าย 1A"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">รหัสหัวจ่าย</label>
-                  <Input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    placeholder="เช่น DISP_01_1"
-                    required
-                    disabled={loadingState.isLoading}
-                  />
-                </div>
-              </div>
-
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium mb-1">เลือกถัง</label>
-                <Select
-                  value={formData.tankId}
-                  onValueChange={handleTankChange}
-                  disabled={loadingState.isLoading}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกถังที่จะเชื่อมต่อ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tanks.map((tank) => (
-                      <SelectItem key={tank.id} value={tank.id}>
-                        {tank.name} ({tank.code}) - {tank.fuelType.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm text-gray-600">หัวจ่ายทั้งหมด</p>
+                <p className="text-2xl font-bold">{dispensers.length}</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">ประเภทเชื้อเพลิง</label>
-                <Select
-                  value={formData.fuelTypeId}
-                  onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
-                  disabled={true}
-                >
-                  <SelectTrigger className="bg-gray-50">
-                    <SelectValue placeholder="จะอัปเดตอัตโนมัติตามถังที่เลือก" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fuelTypes.map((fuelType) => (
-                      <SelectItem key={fuelType.id} value={fuelType.id}>
-                        {fuelType.name} ({fuelType.code})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500 mt-1">
-                  ประเภทเชื้อเพลิงจะถูกกำหนดอัตโนมัติตามถังที่เลือก
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  disabled={loadingState.isLoading}
-                />
-                <label htmlFor="isActive" className="text-sm font-medium">เปิดใช้งาน</label>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={loadingState.isLoading}>
-                  {editingDispenser ? 'บันทึกการแก้ไข' : 'เพิ่มหัวจ่าย'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCloseForm} disabled={loadingState.isLoading}>
-                  ยกเลิก
-                </Button>
-              </div>
-            </form>
+              <Zap className="w-8 h-8 text-blue-600" />
+            </div>
           </CardContent>
         </Card>
-      )}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ใช้งานอยู่</p>
+                <p className="text-2xl font-bold">{activeDispensers}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ถังระดับต่ำ</p>
+                <p className="text-2xl font-bold text-red-600">{lowLevelTanks}</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">ถังเชื่อมต่อ</p>
+                <p className="text-2xl font-bold">{new Set(dispensers.map(d => d.tankId)).size}</p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="w-5 h-5" />
+            ค้นหาหัวจ่าย
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input
+            type="text"
+            placeholder="ค้นหาชื่อหัวจ่าย, รหัส, ถัง, หรือประเภทเชื้อเพลิง..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       {/* Dispensers Table */}
       <Card>
@@ -341,27 +337,26 @@ export default function DispensersPage() {
           <CardTitle>รายการหัวจ่าย</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ชื่อหัวจ่าย</TableHead>
-                <TableHead>รหัส</TableHead>
-                <TableHead>ถังที่เชื่อมต่อ</TableHead>
-                <TableHead>ประเภทเชื้อเพลิง</TableHead>
-                <TableHead>ระดับน้ำมันในถัง</TableHead>
-                <TableHead>สถานะ</TableHead>
-                <TableHead>การจัดการ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {dispensers.length === 0 ? (
+          {filteredDispensers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Zap className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>ไม่พบหัวจ่ายที่ค้นหา</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                    ไม่มีข้อมูลหัวจ่าย
-                  </TableCell>
+                  <TableHead>ชื่อหัวจ่าย</TableHead>
+                  <TableHead>รหัส</TableHead>
+                  <TableHead>ถังที่เชื่อมต่อ</TableHead>
+                  <TableHead>ประเภทเชื้อเพลิง</TableHead>
+                  <TableHead>ระดับน้ำมันในถัง</TableHead>
+                  <TableHead>สถานะ</TableHead>
+                  <TableHead>การจัดการ</TableHead>
                 </TableRow>
-              ) : (
-                dispensers.map((dispenser) => {
+              </TableHeader>
+              <TableBody>
+                {filteredDispensers.map((dispenser) => {
                   const fillPercentage = (dispenser.tank.currentLevel / dispenser.tank.capacity) * 100
                   const isLowLevel = fillPercentage <= 20
                   
@@ -421,33 +416,154 @@ export default function DispensersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex items-center space-x-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(dispenser)}
                             disabled={loadingState.isLoading}
                           >
-                            <Edit className="w-3 h-3" />
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
-                            variant="destructive"
+                            variant="outline"
                             onClick={() => handleDelete(dispenser)}
+                            className="text-red-600 hover:text-red-700"
                             disabled={loadingState.isLoading}
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   )
-                })
-              )}
-            </TableBody>
-          </Table>
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle>
+                {editingDispenser ? 'แก้ไขหัวจ่าย' : 'เพิ่มหัวจ่ายใหม่'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ชื่อหัวจ่าย *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="เช่น หัวจ่าย 1A"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      รหัสหัวจ่าย *
+                    </label>
+                    <Input
+                      type="text"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      placeholder="เช่น DISP_01_1"
+                      required
+                      disabled={loadingState.isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เลือกถัง *
+                  </label>
+                  <Select
+                    value={formData.tankId}
+                    onValueChange={handleTankChange}
+                    disabled={loadingState.isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกถังที่จะเชื่อมต่อ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tanks.map((tank) => (
+                        <SelectItem key={tank.id} value={tank.id}>
+                          {tank.name} ({tank.code}) - {tank.fuelType.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ประเภทเชื้อเพลิง
+                  </label>
+                  <Select
+                    value={formData.fuelTypeId}
+                    onValueChange={(value: string) => setFormData({ ...formData, fuelTypeId: value })}
+                    disabled={true}
+                  >
+                    <SelectTrigger className="bg-gray-50">
+                      <SelectValue placeholder="จะอัปเดตอัตโนมัติตามถังที่เลือก" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fuelTypes.map((fuelType) => (
+                        <SelectItem key={fuelType.id} value={fuelType.id}>
+                          {fuelType.name} ({fuelType.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    ประเภทเชื้อเพลิงจะถูกกำหนดอัตโนมัติตามถังที่เลือก
+                  </p>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                    className="mr-2"
+                    disabled={loadingState.isLoading}
+                  />
+                  <label className="text-sm font-medium text-gray-700">
+                    เปิดใช้งาน
+                  </label>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button type="submit" className="flex-1" disabled={loadingState.isLoading}>
+                    {editingDispenser ? 'บันทึกการแก้ไข' : 'เพิ่มหัวจ่าย'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCloseForm}
+                    className="flex-1"
+                    disabled={loadingState.isLoading}
+                  >
+                    ยกเลิก
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Alert Modal */}
       <AlertModal
