@@ -34,7 +34,8 @@ export async function GET() {
         _count: {
           select: {
             shifts: true,
-            debtorRecords: true,
+            accounts: true,
+            sessions: true,
           }
         }
       },

@@ -10,6 +10,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAlert } from '@/lib/use-alert'
 
+type ShiftStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+
 interface User {
   id: string
   name: string
@@ -23,7 +25,7 @@ interface Shift {
   startTime: string
   endTime: string | null
   user: User
-  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+  status: ShiftStatus
   totalSales: number
   notes: string | null
 }
@@ -34,16 +36,14 @@ export default function EditShiftPage() {
   const { showAlert } = useAlert()
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
-  const [users, setUsers] = useState<User[]>([])
   const [shift, setShift] = useState<Shift | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    userId: '',
     startTime: '',
     endTime: '',
     totalSales: 0,
     notes: '',
-    status: 'ACTIVE' as 'ACTIVE' | 'COMPLETED' | 'CANCELLED',
+    status: 'ACTIVE' as ShiftStatus,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -65,7 +65,6 @@ export default function EditShiftPage() {
 
       setFormData({
         name: shiftData.name,
-        userId: shiftData.user.id,
         startTime: formatDateTime(shiftData.startTime),
         endTime: shiftData.endTime ? formatDateTime(shiftData.endTime) : '',
         totalSales: shiftData.totalSales,
@@ -80,33 +79,17 @@ export default function EditShiftPage() {
     }
   }, [params.id, showAlert])
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (!response.ok) throw new Error('Failed to fetch users')
-      const data = await response.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      showAlert('เกิดข้อผิดพลาดในการดึงข้อมูลพนักงาน', 'error')
-    }
-  }, [showAlert])
-
   useEffect(() => {
     if (params.id) {
       fetchShift()
-      fetchUsers()
     }
-  }, [params.id, fetchShift, fetchUsers])
+  }, [params.id, fetchShift])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
       newErrors.name = 'กรุณาใส่ชื่อกะทำงาน'
-    }
-    if (!formData.userId) {
-      newErrors.userId = 'กรุณาเลือกพนักงาน'
     }
     if (!formData.startTime) {
       newErrors.startTime = 'กรุณาเลือกเวลาเริ่มงาน'
@@ -134,7 +117,7 @@ export default function EditShiftPage() {
       
       const submitData = {
         name: formData.name,
-        userId: formData.userId,
+        userId: shift?.user.id, // ใช้ userId จากข้อมูลผลัดงานเดิม
         startTime: new Date(formData.startTime).toISOString(),
         endTime: formData.endTime ? new Date(formData.endTime).toISOString() : null,
         totalSales: formData.totalSales,
@@ -240,27 +223,18 @@ export default function EditShiftPage() {
                 )}
               </div>
 
-              {/* User Selection */}
+              {/* User Display (Read-only) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  พนักงาน *
+                  พนักงาน
                 </label>
-                <div className={errors.userId ? 'border border-red-500 rounded-md' : ''}>
-                  <Select
-                    value={formData.userId}
-                    onValueChange={(value) => handleInputChange('userId', value)}
-                  >
-                    <option value="">เลือกพนักงาน</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name || user.username} ({user.username})
-                      </option>
-                    ))}
-                  </Select>
+                <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+                  <span className="text-gray-900">{shift.user.name || shift.user.username}</span>
+                  <span className="text-gray-500 ml-2">({shift.user.username})</span>
                 </div>
-                {errors.userId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.userId}</p>
-                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  ไม่สามารถเปลี่ยนพนักงานได้
+                </p>
               </div>
 
               {/* Start Time */}
@@ -305,7 +279,7 @@ export default function EditShiftPage() {
                 </label>
                 <Select
                   value={formData.status}
-                  onValueChange={(value) => handleInputChange('status', value as 'ACTIVE' | 'COMPLETED' | 'CANCELLED')}
+                  onValueChange={(value) => handleInputChange('status', value as ShiftStatus)}
                 >
                   <option value="ACTIVE">กำลังทำงาน</option>
                   <option value="COMPLETED">เสร็จสิ้น</option>

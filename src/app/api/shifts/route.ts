@@ -11,8 +11,18 @@ const createShiftSchema = z.object({
   startTime: z.string().transform((str) => new Date(str)),
   endTime: z.string().transform((str) => new Date(str)).optional().nullable(),
   totalSales: z.number().min(0, 'ยอดขายต้องไม่ติดลบ').default(0),
+  cashSales: z.number().min(0, 'ยอดขายเงินสดต้องไม่ติดลบ').default(0),
+  creditSales: z.number().min(0, 'ยอดขายเครดิตต้องไม่ติดลบ').default(0),
   notes: z.string().optional().nullable(),
   status: z.enum(['ACTIVE', 'COMPLETED', 'CANCELLED']).default('ACTIVE'),
+  fuelPrices: z
+    .array(
+      z.object({
+        fuelTypeId: z.string(),
+        price: z.number().min(0, 'ราคาต้องไม่ติดลบ'),
+      })
+    )
+    .optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -42,7 +52,13 @@ export async function GET(request: NextRequest) {
       where.status = status
     }
 
-    const [shifts, total] = await Promise.all([
+    // Calculate summary data
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    const [shifts, total, activeShiftsCount, todayShifts] = await Promise.all([
       prisma.shift.findMany({
         where,
         include: {
@@ -53,13 +69,44 @@ export async function GET(request: NextRequest) {
               username: true,
             },
           },
+          shiftPrices: {
+            include: {
+              fuelType: true,
+            },
+          },
+          _count: {
+            select: {
+              meterReadings: true,
+              tankReadings: true,
+              sales: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
       prisma.shift.count({ where }),
+      // Count active shifts
+      prisma.shift.count({
+        where: { status: 'ACTIVE' }
+      }),
+      // Get today's shifts for total sales calculation
+      prisma.shift.findMany({
+        where: {
+          createdAt: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+        select: {
+          totalSales: true,
+        },
+      }),
     ])
+
+    // Calculate total sales for today
+    const totalSalesToday = todayShifts.reduce((sum, shift) => sum + shift.totalSales, 0)
 
     return NextResponse.json({
       shifts,
@@ -67,7 +114,11 @@ export async function GET(request: NextRequest) {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        pages: Math.ceil(total / limit),
+      },
+      summary: {
+        activeShifts: activeShiftsCount,
+        totalSalesToday,
       },
     })
   } catch (error) {
@@ -115,17 +166,74 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const shift = await prisma.shift.create({
-      data: validatedData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
+    // สร้างผลัดงานและราคาเชื้อเพลิง
+    const shift = await prisma.$transaction(async (tx) => {
+      // สร้างผลัดงาน
+      const newShift = await tx.shift.create({
+        data: {
+          name: validatedData.name,
+          userId: validatedData.userId,
+          startTime: validatedData.startTime,
+          endTime: validatedData.endTime,
+          totalSales: validatedData.totalSales,
+          cashSales: validatedData.cashSales,
+          creditSales: validatedData.creditSales,
+          notes: validatedData.notes,
+          status: validatedData.status,
+        },
+      })
+
+      // ถ้ามีการกำหนดราคาเชื้อเพลิง
+      if (validatedData.fuelPrices && validatedData.fuelPrices.length > 0) {
+        await tx.shiftFuelPrice.createMany({
+          data: validatedData.fuelPrices.map((fp) => ({
+            shiftId: newShift.id,
+            fuelTypeId: fp.fuelTypeId,
+            price: fp.price,
+          })),
+        })
+      } else {
+        // ใช้ราคาปัจจุบันจากระบบ
+        const currentPrices = await tx.fuelPrice.findMany({
+          where: {
+            isActive: true,
+            effectiveDate: { lte: new Date() },
+            OR: [
+              { endDate: null },
+              { endDate: { gte: new Date() } },
+            ],
+          },
+        })
+
+        if (currentPrices.length > 0) {
+          await tx.shiftFuelPrice.createMany({
+            data: currentPrices.map((price) => ({
+              shiftId: newShift.id,
+              fuelTypeId: price.fuelTypeId,
+              price: price.price,
+            })),
+          })
+        }
+      }
+
+      // ดึงข้อมูลผลัดงานพร้อมความสัมพันธ์
+      return await tx.shift.findUnique({
+        where: { id: newShift.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+            },
+          },
+          shiftPrices: {
+            include: {
+              fuelType: true,
+            },
           },
         },
-      },
+      })
     })
 
     return NextResponse.json(shift, { status: 201 })

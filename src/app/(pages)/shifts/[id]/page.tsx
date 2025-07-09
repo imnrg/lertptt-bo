@@ -2,11 +2,28 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit, Trash2, Clock, User, DollarSign, FileText } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ArrowLeft, Edit, Trash2, Clock, User, DollarSign, FileText, Gauge, Fuel, ShoppingCart, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAlert } from '@/lib/use-alert'
+import MeterManagement from '@/components/shifts/meter-management'
+import TankComparison from '@/components/shifts/tank-comparison'
+import SalesManagement from '@/components/shifts/sales-management'
+
+interface FuelType {
+  id: string
+  name: string
+  code: string
+}
+
+interface ShiftFuelPrice {
+  id: string
+  fuelTypeId: string
+  price: number
+  fuelType: FuelType
+}
 
 interface User {
   id: string
@@ -23,9 +40,17 @@ interface Shift {
   user: User
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   totalSales: number
+  cashSales: number
+  creditSales: number
   notes: string | null
   createdAt: string
   updatedAt: string
+  shiftPrices: ShiftFuelPrice[]
+  _count: {
+    meterReadings: number
+    tankReadings: number
+    sales: number
+  }
 }
 
 const getStatusColor = (status: string) => {
@@ -70,6 +95,7 @@ export default function ViewShiftPage() {
   const [loading, setLoading] = useState(true)
   const [shift, setShift] = useState<Shift | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
 
   const fetchShift = useCallback(async () => {
     try {
@@ -228,150 +254,247 @@ export default function ViewShiftPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              ข้อมูลพื้นฐาน
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">ชื่อกะทำงาน</label>
-              <p className="text-gray-900 font-medium">{shift.name}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">เวลาเริ่มงาน</label>
-              <p className="text-gray-900">
-                {new Date(shift.startTime).toLocaleString('th-TH', {
-                  weekday: 'long',
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">เวลาสิ้นสุดงาน</label>
-              <p className="text-gray-900">
-                {shift.endTime 
-                  ? new Date(shift.endTime).toLocaleString('th-TH', {
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            ภาพรวม
+          </TabsTrigger>
+          <TabsTrigger value="meters" className="flex items-center gap-2">
+            <Gauge className="h-4 w-4" />
+            จัดการมิเตอร์
+            {shift._count.meterReadings > 0 && (
+              <span className="ml-1 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+                {shift._count.meterReadings}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="tanks" className="flex items-center gap-2">
+            <Fuel className="h-4 w-4" />
+            เปรียบเทียบถัง
+            {shift._count.tankReadings > 0 && (
+              <span className="ml-1 bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full">
+                {shift._count.tankReadings}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="sales" className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            จัดการการขาย
+            {shift._count.sales > 0 && (
+              <span className="ml-1 bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
+                {shift._count.sales}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  ข้อมูลพื้นฐาน
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">ชื่อกะทำงาน</label>
+                  <p className="text-gray-900 font-medium">{shift.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">เวลาเริ่มงาน</label>
+                  <p className="text-gray-900">
+                    {new Date(shift.startTime).toLocaleString('th-TH', {
                       weekday: 'long',
                       day: '2-digit',
                       month: 'long',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })
-                  : 'ยังไม่ได้จบกะ'
-                }
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">ระยะเวลาทำงาน</label>
-              <p className="text-gray-900">
-                {calculateWorkingHours(shift.startTime, shift.endTime)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">เวลาสิ้นสุดงาน</label>
+                  <p className="text-gray-900">
+                    {shift.endTime 
+                      ? new Date(shift.endTime).toLocaleString('th-TH', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'ยังไม่ได้จบกะ'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">ระยะเวลาทำงาน</label>
+                  <p className="text-gray-900">
+                    {calculateWorkingHours(shift.startTime, shift.endTime)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Employee Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              ข้อมูลพนักงาน
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">ชื่อ-นามสกุล</label>
-              <p className="text-gray-900 font-medium">{shift.user.name || 'ไม่ระบุ'}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">ชื่อผู้ใช้</label>
-              <p className="text-gray-900">{shift.user.username}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">อีเมล</label>
-              <p className="text-gray-900">{shift.user.email || 'ไม่ระบุ'}</p>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Employee Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  ข้อมูลพนักงาน
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">ชื่อ-นามสกุล</label>
+                  <p className="text-gray-900 font-medium">{shift.user.name || 'ไม่ระบุ'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">ชื่อผู้ใช้</label>
+                  <p className="text-gray-900">{shift.user.username}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">อีเมล</label>
+                  <p className="text-gray-900">{shift.user.email || 'ไม่ระบุ'}</p>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Sales Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              ข้อมูลยอดขาย
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">ยอดขายรวม</label>
-              <p className="text-3xl font-bold text-green-600">
-                ฿{shift.totalSales.toLocaleString()}
-              </p>
-            </div>
-            {shift.endTime && (
+            {/* Sales Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  ข้อมูลยอดขาย
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">ยอดขายรวม</label>
+                  <p className="text-3xl font-bold text-green-600">
+                    ฿{shift.totalSales.toLocaleString()}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">ขายเงินสด</label>
+                    <p className="text-xl font-semibold text-blue-600">
+                      ฿{shift.cashSales.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">ขายเครดิต</label>
+                    <p className="text-xl font-semibold text-orange-600">
+                      ฿{shift.creditSales.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                {shift.endTime && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">ยอดขายต่อชั่วโมง</label>
+                    <p className="text-gray-900">
+                      ฿{(shift.totalSales / (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) * (1000 * 60 * 60)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Fuel Prices */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  ราคาเชื้อเพลิงในผลัดงาน
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {shift.shiftPrices.length > 0 ? (
+                  <div className="space-y-2">
+                    {shift.shiftPrices.map((price) => (
+                      <div key={price.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                        <span className="font-medium">{price.fuelType.name}</span>
+                        <span className="text-lg font-semibold text-green-600">
+                          ฿{price.price.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">ไม่มีข้อมูลราคาเชื้อเพลิง</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Notes & Additional Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                หมายเหตุและข้อมูลเพิ่มเติม
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">ยอดขายต่อชั่วโมง</label>
-                <p className="text-gray-900">
-                  ฿{(shift.totalSales / (new Date(shift.endTime).getTime() - new Date(shift.startTime).getTime()) * (1000 * 60 * 60)).toLocaleString()}
+                <label className="text-sm font-medium text-gray-500">หมายเหตุ</label>
+                <p className="text-gray-900 whitespace-pre-wrap">
+                  {shift.notes || 'ไม่มีหมายเหตุ'}
                 </p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">วันที่สร้าง</label>
+                  <p className="text-gray-900">
+                    {new Date(shift.createdAt).toLocaleString('th-TH', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">อัปเดตล่าสุด</label>
+                  <p className="text-gray-900">
+                    {new Date(shift.updatedAt).toLocaleString('th-TH', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Notes & Additional Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              หมายเหตุและข้อมูลเพิ่มเติม
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-500">หมายเหตุ</label>
-              <p className="text-gray-900 whitespace-pre-wrap">
-                {shift.notes || 'ไม่มีหมายเหตุ'}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">วันที่สร้าง</label>
-              <p className="text-gray-900">
-                {new Date(shift.createdAt).toLocaleString('th-TH', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-500">อัปเดตล่าสุด</label>
-              <p className="text-gray-900">
-                {new Date(shift.updatedAt).toLocaleString('th-TH', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Meter Management Tab */}
+        <TabsContent value="meters">
+          <MeterManagement shiftId={shift.id} shiftStatus={shift.status} />
+        </TabsContent>
+
+        {/* Tank Comparison Tab */}
+        <TabsContent value="tanks">
+          <TankComparison shiftId={shift.id} shiftStatus={shift.status} />
+        </TabsContent>
+
+        {/* Sales Management Tab */}
+        <TabsContent value="sales">
+          <SalesManagement shiftId={shift.id} shiftStatus={shift.status} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -126,7 +126,7 @@ export default function ShiftsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, searchTerm, showAlert, statusFilter])
+  }, [page, statusFilter, searchTerm]) // Removed showAlert from dependencies
 
   const handleDelete = async (shiftId: string, shiftName: string) => {
     if (!confirm(`คุณต้องการลบผลัดงาน "${shiftName}" หรือไม่?`)) {
@@ -181,21 +181,23 @@ export default function ShiftsPage() {
     }
   }
 
+  // Load data on mount and when dependencies change
   useEffect(() => {
     fetchShifts()
   }, [fetchShifts])
 
+  // Handle search with debounce - separate effect
   useEffect(() => {
     const delayedSearch = setTimeout(() => {
       if (page === 1) {
         fetchShifts()
       } else {
-        setPage(1)
+        setPage(1) // This will trigger fetchShifts through the first useEffect
       }
     }, 300)
 
     return () => clearTimeout(delayedSearch)
-  }, [searchTerm, statusFilter, page, fetchShifts])
+  }, [searchTerm]) // Removed fetchShifts and page from dependencies
 
   if (loading) {
     return (

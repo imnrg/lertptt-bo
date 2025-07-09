@@ -91,27 +91,27 @@ export default function UsersPage() {
     }
 
     try {
-      console.log('Fetching users...') // Debug log
+      console.log('Fetching users from database...')
       
       const response = await fetch('/api/users')
-      console.log('Response status:', response.status) // Debug response
       
       if (response.ok) {
         const data = await response.json()
-        console.log('Users data:', data) // Debug data
+        console.log('Users found:', data.length)
+        console.log('Users data:', data)
         setUsers(data)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error('API Error:', errorData) // Debug error
+        console.error('API Error:', errorData)
         showAlert(`เกิดข้อผิดพลาดในการดึงข้อมูลผู้ใช้: ${errorData.error || 'Unknown error'}`, 'error')
       }
     } catch (error) {
-      console.error('Fetch error:', error) // Debug catch error
+      console.error('Fetch error:', error)
       showAlert(`เกิดข้อผิดพลาดในการเชื่อมต่อ: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setLoading(false)
     }
-  }, [session, canAccess, showAlert])
+  }, [session, canAccess]) // Removed showAlert from dependencies
 
   // Refetch when session or access permission changes
   useEffect(() => {

@@ -4,27 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { ArrowLeft, Clock, User } from 'lucide-react'
+import { ArrowLeft, Clock } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAlert } from '@/lib/use-alert'
-
-interface User {
-  id: string
-  name: string
-  username: string
-  email: string
-}
+import { useSession } from 'next-auth/react'
 
 export default function NewShiftPage() {
   const router = useRouter()
   const { showAlert } = useAlert()
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
-  const [users, setUsers] = useState<User[]>([])
   const [formData, setFormData] = useState({
     name: '',
-    userId: '',
     startTime: '',
     endTime: '',
     totalSales: 0,
@@ -33,36 +26,20 @@ export default function NewShiftPage() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const response = await fetch('/api/users')
-      if (!response.ok) throw new Error('Failed to fetch users')
-      const data = await response.json()
-      setUsers(data.users || [])
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      showAlert('เกิดข้อผิดพลาดในการดึงข้อมูลพนักงาน', 'error')
-    }
-  }, [showAlert])
-
   useEffect(() => {
-    fetchUsers()
     // Set default start time to current time
     const now = new Date()
     const currentDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16)
     setFormData(prev => ({ ...prev, startTime: currentDateTime }))
-  }, [fetchUsers])
+  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
     if (!formData.name.trim()) {
       newErrors.name = 'กรุณาใส่ชื่อกะทำงาน'
-    }
-    if (!formData.userId) {
-      newErrors.userId = 'กรุณาเลือกพนักงาน'
     }
     if (!formData.startTime) {
       newErrors.startTime = 'กรุณาเลือกเวลาเริ่มงาน'
@@ -85,12 +62,17 @@ export default function NewShiftPage() {
       return
     }
 
+    if (!session?.user?.id) {
+      showAlert('ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่', 'error')
+      return
+    }
+
     try {
       setLoading(true)
       
       const submitData = {
         name: formData.name,
-        userId: formData.userId,
+        userId: session.user.id, // ใช้ user ID จาก session
         startTime: new Date(formData.startTime).toISOString(),
         endTime: formData.endTime ? new Date(formData.endTime).toISOString() : null,
         totalSales: formData.totalSales,
@@ -141,7 +123,7 @@ export default function NewShiftPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">เพิ่มผลัดงานใหม่</h1>
           <p className="mt-2 text-sm text-gray-700">
-            สร้างผลัดการทำงานใหม่สำหรับพนักงาน
+            สร้างผลัดการทำงานใหม่สำหรับตนเอง
           </p>
         </div>
       </div>
@@ -159,10 +141,11 @@ export default function NewShiftPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Shift Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="shift-name" className="block text-sm font-medium text-gray-700 mb-2">
                   ชื่อกะทำงาน *
                 </label>
                 <Input
+                  id="shift-name"
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
@@ -174,35 +157,24 @@ export default function NewShiftPage() {
                 )}
               </div>
 
-              {/* User Selection */}
+              {/* Current User Display */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  พนักงาน *
+                <label htmlFor="shift-user" className="block text-sm font-medium text-gray-700 mb-2">
+                  พนักงาน
                 </label>
-                <div className={errors.userId ? 'border border-red-500 rounded-md' : ''}>
-                  <Select
-                    value={formData.userId}
-                    onValueChange={(value) => handleInputChange('userId', value)}
-                  >
-                    <option value="">เลือกพนักงาน</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name || user.username} ({user.username})
-                      </option>
-                    ))}
-                  </Select>
+                <div id="shift-user" className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+                  <span className="text-gray-900">{session?.user?.name || session?.user?.username}</span>
+                  <span className="text-gray-500 ml-2">({session?.user?.username})</span>
                 </div>
-                {errors.userId && (
-                  <p className="mt-1 text-sm text-red-600">{errors.userId}</p>
-                )}
               </div>
 
               {/* Start Time */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="start-time" className="block text-sm font-medium text-gray-700 mb-2">
                   เวลาเริ่มงาน *
                 </label>
                 <Input
+                  id="start-time"
                   type="datetime-local"
                   value={formData.startTime}
                   onChange={(e) => handleInputChange('startTime', e.target.value)}
@@ -215,10 +187,11 @@ export default function NewShiftPage() {
 
               {/* End Time */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="end-time" className="block text-sm font-medium text-gray-700 mb-2">
                   เวลาสิ้นสุดงาน
                 </label>
                 <Input
+                  id="end-time"
                   type="datetime-local"
                   value={formData.endTime}
                   onChange={(e) => handleInputChange('endTime', e.target.value)}
@@ -234,7 +207,7 @@ export default function NewShiftPage() {
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
                   สถานะ
                 </label>
                 <Select
@@ -249,10 +222,11 @@ export default function NewShiftPage() {
 
               {/* Total Sales */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="total-sales" className="block text-sm font-medium text-gray-700 mb-2">
                   ยอดขาย (บาท)
                 </label>
                 <Input
+                  id="total-sales"
                   type="number"
                   min="0"
                   step="0.01"
@@ -269,10 +243,11 @@ export default function NewShiftPage() {
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
                 หมายเหตุ
               </label>
               <textarea
+                id="notes"
                 value={formData.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 placeholder="หมายเหตุเพิ่มเติม..."
