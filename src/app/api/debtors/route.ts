@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { debtorSchema } from '@/lib/validations';
+import { ZodError } from 'zod';
 
 // GET - List all debtors
 export async function GET() {
@@ -37,13 +38,27 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedData = debtorSchema.parse(body);
 
-    const debtor = await prisma.debtorRecord.create({
-      data: validatedData,
-    });
+    try {
+      const validatedData = debtorSchema.parse(body);
 
-    return NextResponse.json(debtor, { status: 201 });
+      const debtor = await prisma.debtorRecord.create({
+        data: validatedData,
+      });
+
+      return NextResponse.json(debtor, { status: 201 });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          {
+            error: 'Validation failed',
+            issues: error.issues,
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error creating debtor:', error);
     return NextResponse.json(

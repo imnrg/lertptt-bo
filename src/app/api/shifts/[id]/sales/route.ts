@@ -63,7 +63,7 @@ export async function GET(
             select: {
               id: true,
               customerName: true,
-              customerPhone: true,
+              phone: true,
             },
           },
         },
@@ -118,12 +118,12 @@ export async function GET(
 
     // ดึงข้อมูลลูกหนี้
     const debtors = await prisma.debtorRecord.findMany({
-      where: { status: { in: ['PENDING', 'PARTIAL'] } },
+      where: { isActive: true },
       select: {
         id: true,
         customerName: true,
-        customerPhone: true,
-        amount: true,
+        phone: true,
+        creditLimit: true,
       },
       orderBy: { customerName: 'asc' },
     })
@@ -311,7 +311,7 @@ export async function POST(
             select: {
               id: true,
               customerName: true,
-              customerPhone: true,
+              phone: true,
             },
           },
         },

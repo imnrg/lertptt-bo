@@ -3,11 +3,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { debtorSchema } from '@/lib/validations';
+import { ZodError } from 'zod';
 
 // GET - Get single debtor
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,8 +16,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const debtor = await prisma.debtorRecord.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!debtor) {
@@ -36,7 +39,7 @@ export async function GET(
 // PUT - Update debtor
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -44,15 +47,30 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
-    const validatedData = debtorSchema.parse(body);
+    
+    try {
+      const validatedData = debtorSchema.parse(body);
+      
+      const debtor = await prisma.debtorRecord.update({
+        where: { id },
+        data: validatedData
+      });
 
-    const debtor = await prisma.debtorRecord.update({
-      where: { id: params.id },
-      data: validatedData
-    });
-
-    return NextResponse.json(debtor);
+      return NextResponse.json(debtor);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          { 
+            error: 'Validation failed', 
+            issues: error.issues 
+          }, 
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error updating debtor:', error);
     return NextResponse.json(
@@ -65,7 +83,7 @@ export async function PUT(
 // DELETE - Delete debtor
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -73,8 +91,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     await prisma.debtorRecord.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ message: 'Debtor deleted successfully' });

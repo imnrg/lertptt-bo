@@ -315,16 +315,6 @@ export const debtorSchema = z.object({
     .max(20, "เบอร์แฟกซ์ยาวเกินไป")
     .optional()
     .or(z.literal("")),
-  creditLimit: z.number()
-    .min(0, "วงเงินเครดิตต้องไม่น้อยกว่า 0")
-    .max(9999999.99, "วงเงินเครดิตสูงเกินไป")
-    .finite("วงเงินเครดิตไม่ถูกต้อง")
-    .default(0),
-  creditTerm: z.number()
-    .min(0, "เทอมเครดิตต้องไม่น้อยกว่า 0")
-    .max(365, "เทอมเครดิตสูงเกินไป")
-    .finite("เทอมเครดิตไม่ถูกต้อง")
-    .default(30),
   isActive: z.boolean().default(true),
 })
 

@@ -48,7 +48,7 @@ export function hasXssPattern(input: string): boolean {
 export function sanitizeObject<T extends Record<string, unknown>>(
   obj: T,
   schema: z.ZodSchema<T>
-): { success: true; data: T } | { success: false; error: string } {
+): { success: true; data: T } | { success: false, error: string } {
   try {
     // First validate with schema
     const validated = schema.parse(obj)
@@ -60,9 +60,9 @@ export function sanitizeObject<T extends Record<string, unknown>>(
         if (hasSqlInjectionPattern(value) || hasXssPattern(value)) {
           throw new Error(`Invalid characters detected in field: ${key}`)
         }
-        acc[key] = sanitizeInput(value)
+        (acc as Record<string, unknown>)[key] = sanitizeInput(value)
       } else {
-        acc[key] = value
+        (acc as Record<string, unknown>)[key] = value
       }
       return acc
     }, {} as T)
