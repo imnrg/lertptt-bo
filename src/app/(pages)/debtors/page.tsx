@@ -71,8 +71,8 @@ export default function DebtorsPage() {
   }, [showAlert, showLoading, hideLoading])
 
   useEffect(() => {
-    fetchDebtors()
-  }, [fetchDebtors])
+    fetchDebtors();
+  }, []); // Removed dependencies to ensure it runs only once on mount
 
   // Client-side validation
   const validateForm = () => {
