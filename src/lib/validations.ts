@@ -59,6 +59,10 @@ const emailSchema = z.string()
   .optional()
   .or(z.literal(""))
 
+// Accept both Prisma CUID and UUID formats for ID fields
+const cuidRegex = /^c[0-9a-z]{24,}$/
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 // Authentication schemas
 export const registerSchema = z.object({
   username: usernameSchema,
@@ -169,7 +173,7 @@ export const tankSchema = z.object({
     .optional(),
   fuelTypeId: z.string()
     .min(1, "กรุณาเลือกประเภทเชื้อเพลิง")
-    .uuid("รหัสประเภทเชื้อเพลิงไม่ถูกต้อง"),
+    .refine((val) => cuidRegex.test(val) || uuidRegex.test(val), { message: "รหัสประเภทเชื้อเพลิงไม่ถูกต้อง" }),
   location: z.string()
     .max(200, "ตำแหน่งยาวเกินไป")
     .optional(),
@@ -196,10 +200,10 @@ export const dispenserSchema = z.object({
     .trim(),
   tankId: z.string()
     .min(1, "กรุณาเลือกถัง")
-    .uuid("รหัสถังไม่ถูกต้อง"),
+    .refine((val) => cuidRegex.test(val) || uuidRegex.test(val), { message: "รหัสถังไม่ถูกต้อง" }),
   fuelTypeId: z.string()
     .min(1, "กรุณาเลือกประเภทเชื้อเพลิง")
-    .uuid("รหัสประเภทเชื้อเพลิงไม่ถูกต้อง"),
+    .refine((val) => cuidRegex.test(val) || uuidRegex.test(val), { message: "รหัสประเภทเชื้อเพลิงไม่ถูกต้อง" }),
   location: z.string()
     .max(200, "ตำแหน่งยาวเกินไป")
     .optional(),
@@ -226,8 +230,8 @@ export const productSchema = z.object({
     .finite("ค่าต้นทุนไม่ถูกต้อง")
     .optional(),
   fuelTypeId: z.string()
-    .uuid("รหัสประเภทเชื้อเพลิงไม่ถูกต้อง")
-    .optional(),
+    .optional()
+    .refine((val) => !val || cuidRegex.test(val) || uuidRegex.test(val), { message: "รหัสประเภทเชื้อเพลิงไม่ถูกต้อง" }),
   category: z.string()
     .max(100, "หมวดหมู่ยาวเกินไป")
     .optional(),
@@ -262,16 +266,6 @@ export const bulkPriceUpdateSchema = z.object({
   })),
   effectiveDate: z.string().min(1, "กรุณาเลือกวันที่มีผล"),
   endDate: z.string().optional(),
-})
-
-// Shift Management schemas
-export const shiftSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อกะการทำงาน"),
-  startTime: z.string().min(1, "กรุณาเลือกเวลาเริ่มต้น"),
-  endTime: z.string().optional(),
-  userId: z.string().min(1, "กรุณาเลือกพนักงาน"),
-  notes: z.string().optional(),
-  totalSales: z.number().min(0, "ยอดขายต้องไม่น้อยกว่า 0").default(0),
 })
 
 // Debtor Management schemas
@@ -367,11 +361,5 @@ export type FuelTypeFormData = z.infer<typeof fuelTypeSchema>
 export type TankFormData = z.infer<typeof tankSchema>
 export type DispenserFormData = z.infer<typeof dispenserSchema>
 export type ProductFormData = z.infer<typeof productSchema>
-export type ShiftFormData = z.infer<typeof shiftSchema>
-export type DebtorFormData = z.infer<typeof debtorSchema>
-export type DebtorRecordFormData = z.infer<typeof debtorRecordSchema>
-export type CreateUserFormData = z.infer<typeof createUserSchema>
-export type UpdateUserFormData = z.infer<typeof updateUserSchema>
-export type ResetUserPasswordFormData = z.infer<typeof resetUserPasswordSchema>
 export type ProductPriceFormData = z.infer<typeof productPriceSchema>
 export type BulkPriceUpdateFormData = z.infer<typeof bulkPriceUpdateSchema>

@@ -2,9 +2,6 @@
 CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'MANAGER', 'USER');
 
 -- CreateEnum
-CREATE TYPE "ShiftStatus" AS ENUM ('ACTIVE', 'COMPLETED', 'CANCELLED');
-
--- CreateEnum
 CREATE TYPE "DebtorStatus" AS ENUM ('PENDING', 'PARTIAL', 'PAID', 'OVERDUE');
 
 -- CreateTable
@@ -126,22 +123,6 @@ CREATE TABLE "Product" (
 );
 
 -- CreateTable
-CREATE TABLE "Shift" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "startTime" TIMESTAMP(3) NOT NULL,
-    "endTime" TIMESTAMP(3),
-    "userId" TEXT NOT NULL,
-    "status" "ShiftStatus" NOT NULL DEFAULT 'ACTIVE',
-    "notes" TEXT,
-    "totalSales" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "Shift_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "DebtorRecord" (
     "id" TEXT NOT NULL,
     "customerName" TEXT NOT NULL,
@@ -211,9 +192,6 @@ ALTER TABLE "Dispenser" ADD CONSTRAINT "Dispenser_fuelTypeId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_fuelTypeId_fkey" FOREIGN KEY ("fuelTypeId") REFERENCES "FuelType"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Shift" ADD CONSTRAINT "Shift_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "DebtorRecord" ADD CONSTRAINT "DebtorRecord_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

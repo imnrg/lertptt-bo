@@ -39,10 +39,6 @@ interface User {
   isActive: boolean
   createdAt: string
   updatedAt: string
-  _count: {
-    shifts: number
-    debtorRecords: number
-  }
 }
 
 const roleIcons = {

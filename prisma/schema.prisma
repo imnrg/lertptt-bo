@@ -47,7 +47,6 @@ model User {
   updatedAt            DateTime  @updatedAt
   accounts             Account[]
   sessions             Session[]
-  shifts               Shift[]
 }
 
 model VerificationToken {
@@ -56,124 +55,6 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-model Shift {
-  id            String           @id @default(cuid())
-  name          String
-  startTime     DateTime
-  endTime       DateTime?
-  userId        String
-  status        ShiftStatus      @default(ACTIVE)
-  notes         String?
-  totalSales    Float            @default(0)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  cashSales     Float            @default(0)
-  creditSales   Float            @default(0)
-  meterReadings MeterReading[]
-  sales         Sale[]
-  user          User             @relation(fields: [userId], references: [id])
-  shiftPrices   ShiftFuelPrice[]
-  tankReadings  TankReading[]
-  tankRefills   TankRefill[]
-}
-
-model ShiftFuelPrice {
-  id         String   @id @default(cuid())
-  shiftId    String
-  fuelTypeId String
-  price      Float
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  fuelType   FuelType @relation(fields: [fuelTypeId], references: [id])
-  shift      Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-
-  @@unique([shiftId, fuelTypeId])
-}
-
-model MeterReading {
-  id           String    @id @default(cuid())
-  shiftId      String
-  dispenserId  String
-  startReading Float
-  endReading   Float?
-  testLiters   Float     @default(0)
-  usageLiters  Float     @default(0)
-  discount     Float     @default(0)
-  totalLiters  Float?
-  totalAmount  Float?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  dispenser    Dispenser @relation(fields: [dispenserId], references: [id])
-  shift        Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-
-  @@unique([shiftId, dispenserId])
-}
-
-model TankReading {
-  id                String   @id @default(cuid())
-  shiftId           String
-  tankId            String
-  startLevel        Float
-  calculatedLevel   Float?
-  actualLevel       Float?
-  difference        Float?
-  differencePercent Float?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  shift             Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  tank              Tank     @relation(fields: [tankId], references: [id])
-
-  @@unique([shiftId, tankId])
-}
-
-model TankRefill {
-  id        String   @id @default(cuid())
-  shiftId   String
-  tankId    String
-  amount    Float
-  timestamp DateTime @default(now())
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  tank      Tank     @relation(fields: [tankId], references: [id])
-}
-
-model Sale {
-  id           String              @id @default(cuid())
-  shiftId      String
-  billNumber   String              @unique
-  licensePlate String?
-  paymentType  PaymentType         @default(CASH)
-  debtorId     String?
-  subtotal     Float               @default(0)
-  discount     Float               @default(0)
-  total        Float               @default(0)
-  notes        String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  transactions DebtorTransaction[]
-  debtor       DebtorRecord?       @relation(fields: [debtorId], references: [id])
-  shift        Shift               @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  items        SaleItem[]
-}
-
-model SaleItem {
-  id          String   @id @default(cuid())
-  saleId      String
-  productId   String
-  productCode String
-  productName String
-  unitPrice   Float
-  quantity    Float
-  discount    Float    @default(0)
-  total       Float
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  product     Product  @relation(fields: [productId], references: [id])
-  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 }
 
 model Dispenser {
@@ -188,7 +69,6 @@ model Dispenser {
   updatedAt     DateTime       @updatedAt
   fuelType      FuelType       @relation(fields: [fuelTypeId], references: [id])
   tank          Tank           @relation(fields: [tankId], references: [id])
-  meterReadings MeterReading[]
 }
 
 model Tank {
@@ -206,8 +86,6 @@ model Tank {
   updatedAt    DateTime      @updatedAt
   dispensers   Dispenser[]
   fuelType     FuelType      @relation(fields: [fuelTypeId], references: [id])
-  tankReadings TankReading[]
-  tankRefills  TankRefill[]
 }
 
 model Product {
@@ -226,7 +104,6 @@ model Product {
   updatedAt     DateTime       @updatedAt
   fuelType      FuelType?      @relation(fields: [fuelTypeId], references: [id])
   prices        ProductPrice[]
-  saleItems     SaleItem[]
 }
 
 model ProductPrice {
@@ -256,7 +133,6 @@ model FuelType {
   dispensers    Dispenser[]
   prices        FuelPrice[]
   products      Product[]
-  shiftPrices   ShiftFuelPrice[]
   tanks         Tank[]
 }
 
@@ -278,7 +154,6 @@ model DebtorRecord {
   taxId         String?
   fuelDiscounts DebtorFuelDiscount[]
   transactions  DebtorTransaction[]
-  sales         Sale[]
 }
 
 model DebtorFuelDiscount {
@@ -299,7 +174,6 @@ model DebtorFuelDiscount {
 model DebtorTransaction {
   id          String            @id @default(cuid())
   debtorId    String
-  saleId      String?
   type        TransactionType
   amount      Float
   balance     Float
@@ -310,7 +184,6 @@ model DebtorTransaction {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   debtor      DebtorRecord      @relation(fields: [debtorId], references: [id], onDelete: Cascade)
-  sale        Sale?             @relation(fields: [saleId], references: [id])
 }
 
 model FuelPrice {
@@ -321,47 +194,4 @@ model FuelPrice {
   endDate       DateTime?
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  fuelType      FuelType  @relation(fields: [fuelTypeId], references: [id], onDelete: Cascade)
-
-  @@index([fuelTypeId, effectiveDate])
-  @@index([effectiveDate, isActive])
-}
-
-enum UserRole {
-  ADMIN
-  MANAGER
-  USER
-}
-
-enum ShiftStatus {
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum DebtorStatus {
-  PENDING
-  PARTIAL
-  PAID
-  OVERDUE
-}
-
-enum PaymentType {
-  CASH
-  CREDIT
-}
-
-enum TransactionType {
-  SALE
-  PAYMENT
-  ADJUSTMENT
-}
-
-enum TransactionStatus {
-  PENDING
-  PAID
-  PARTIAL
-  OVERDUE
-  CANCELLED
-}
+  updatedAt     DateTime  @default

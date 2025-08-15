@@ -8,7 +8,6 @@ import {
   LayoutDashboard, 
   Fuel, 
   Package, 
-  Clock, 
   Users, 
   Settings, 
   LogOut,
@@ -32,7 +31,6 @@ const navigation = [
     ]
   },
   { name: 'จัดการสินค้า', href: '/products', icon: Package },
-  { name: 'จัดการผลัดงาน', href: '/shifts', icon: Clock },
   { name: 'จัดการลูกหนี้', href: '/debtors', icon: Users },
   { name: 'จัดการผู้ใช้', href: '/users', icon: Users },
   { name: 'ตั้งค่า', href: '/settings', icon: Settings },
@@ -76,6 +74,7 @@ export default function Sidebar() {
                 <div key={item.name}>
                   <Link
                     href={item.href}
+                    prefetch={false}
                     className={cn(
                       "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isActive 

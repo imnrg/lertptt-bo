@@ -47,7 +47,6 @@ const PROTECTED_ROUTES = [
   '/dashboard',
   '/fuel',
   '/products',
-  '/shifts',
   '/debtors',
   '/users',
   '/settings',
@@ -69,7 +68,7 @@ const PUBLIC_ROUTES = [
 
 // Protected routes that require specific roles
 const ADMIN_ROUTES = ['/users', '/settings/system']
-const MANAGER_ROUTES = ['/fuel', '/products', '/shifts']
+const MANAGER_ROUTES = ['/fuel', '/products']
 const USER_ROUTES = ['/dashboard', '/settings/profile']
 
 function isPublicRoute(pathname: string): boolean {
