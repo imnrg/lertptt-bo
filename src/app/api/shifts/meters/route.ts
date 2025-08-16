@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
 
     if (!shiftId) return NextResponse.json({ error: 'Missing shiftId' }, { status: 400 })
 
-    const meters = await prisma.shiftMeter.findMany({ where: { shiftId } })
+    // include relations so client can display names
+    const meters = await prisma.shiftMeter.findMany({ where: { shiftId }, include: { dispenser: true, tank: true, fuelType: true } })
     return NextResponse.json(meters)
   } catch (error) {
     console.error('Error fetching shift meters', error)
@@ -56,7 +57,31 @@ export async function PUT(request: NextRequest) {
 
     try {
       const data = shiftMeterSchema.parse(body)
-      const updated = await prisma.shiftMeter.update({ where: { id: body.id }, data })
+
+      // compute sold volume based on meters and withdrawals
+      const end = data.endMeter ?? data.startMeter
+      const soldVolume = (end - data.startMeter - (data.testWithdraw ?? 0) - (data.useWithdraw ?? 0)) || 0
+
+      // try to find stamped price for this shift and fuel type to compute amount
+      let amount: number | null = null
+      try {
+        const priceRecord = await (prisma as any).shiftFuelPrice.findFirst({ where: { shiftId: data.shiftId, fuelTypeId: data.fuelTypeId }, orderBy: { createdAt: 'desc' } })
+        if (priceRecord) {
+          amount = soldVolume * priceRecord.price
+        }
+      } catch (err) {
+        console.warn('Failed to lookup shift fuel price', err)
+      }
+
+      const updated = await prisma.shiftMeter.update({
+        where: { id: body.id },
+        data: {
+          ...data,
+          soldVolume,
+          amount,
+        },
+        include: { dispenser: true, tank: true, fuelType: true },
+      })
       return NextResponse.json(updated)
     } catch (err) {
       if (err instanceof ZodError) {

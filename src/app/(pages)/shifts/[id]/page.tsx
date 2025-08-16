@@ -1,16 +1,19 @@
 import { prisma } from '@/lib/prisma'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import ShiftTabs from '@/components/shifts/shift-tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckSquare, Layers, Activity, Edit } from 'lucide-react'
 import ShiftFuelPrices from '@/components/shifts/shift-fuel-prices'
 
 export async function generateMetadata({ params }: any) {
-  const shift = await prisma.shift.findUnique({ where: { id: params.id } })
+  const { id } = await params
+  const shift = await prisma.shift.findUnique({ where: { id } })
   return { title: `ผลัดงาน - ${shift?.name ?? 'รายละเอียด'}` }
 }
 
 export default async function ShiftDetailPage({ params }: any) {
-  const { id } = params
+  const { id } = await params
 
   const shift = await (prisma.shift as any).findUnique({
     where: { id },
@@ -34,7 +37,12 @@ export default async function ShiftDetailPage({ params }: any) {
           <p className="text-sm text-gray-600">{new Date(shift.startTime).toLocaleString()} - {shift.endTime ? new Date(shift.endTime).toLocaleString() : 'กำลังทำงาน'}</p>
           {shift.description && <p className="mt-2 text-sm text-gray-700">{shift.description}</p>}
         </div>
-        {/* actions removed: Edit and Close Shift buttons intentionally omitted */}
+        <div className="flex items-center gap-2">
+          <Link href="/shifts">
+            <Button>ย้อนกลับ</Button>
+          </Link>
+          {/* actions removed: Edit and Close Shift buttons intentionally omitted */}
+        </div>
       </div>
 
       {/* Stats */}
