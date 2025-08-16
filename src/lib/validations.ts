@@ -395,6 +395,11 @@ export const shiftSaleSchema = z.object({
   discount: z.number().min(0).optional(),
 })
 
+export const shiftFuelPriceUpdateSchema = z.object({
+  id: z.string().min(1, "รหัสราคาผลัดไม่ถูกต้อง"),
+  price: z.number().positive("ราคาต้องมากกว่า 0"),
+})
+
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type LoginFormData = z.infer<typeof loginSchema>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>

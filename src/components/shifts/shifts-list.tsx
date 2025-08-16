@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
-import { Plus, Search, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface Shift {
   id: string
@@ -22,6 +23,7 @@ interface Shift {
 
 export default function ShiftsList() {
   const { data: session } = useSession()
+  const router = useRouter()
   const { alertState, loadingState, showAlert, showConfirm, showLoading, hideLoading, closeAlert } = useAlert()
   const [shifts, setShifts] = useState<Shift[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -213,7 +215,6 @@ export default function ShiftsList() {
                   <TableHead>เวลาเริ่มต้น</TableHead>
                   <TableHead>เวลาสิ้นสุด</TableHead>
                   <TableHead>คำอธิบาย</TableHead>
-                  <TableHead>การจัดการ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -231,13 +232,13 @@ export default function ShiftsList() {
                       <div className="text-sm text-gray-900">{s.endTime ? new Date(s.endTime).toLocaleString('th-TH') : '-'}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm text-gray-900">-</div>
-                    </TableCell>
-                    <TableCell>
                       <div className="text-sm text-gray-700">{s.description || '-'}</div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
+                       <Button size="sm" variant="outline" onClick={() => router.push(`/shifts/${s.id}`)} aria-label={`ดูรายละเอียด ${s.name}`}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => handleEdit(s)} disabled={loadingState.isLoading}>
                           <Edit className="h-4 w-4" />
                         </Button>

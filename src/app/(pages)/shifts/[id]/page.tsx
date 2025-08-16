@@ -1,10 +1,8 @@
 import { prisma } from '@/lib/prisma'
-import MeterManagement from '@/components/shifts/meter-management'
-import TankComparison from '@/components/shifts/tank-comparison'
-import SalesManagement from '@/components/shifts/sales-management'
+import ShiftTabs from '@/components/shifts/shift-tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Edit, CheckSquare, Layers, Activity } from 'lucide-react'
+import { CheckSquare, Layers, Activity, Edit } from 'lucide-react'
+import ShiftFuelPrices from '@/components/shifts/shift-fuel-prices'
 
 export async function generateMetadata({ params }: any) {
   const shift = await prisma.shift.findUnique({ where: { id: params.id } })
@@ -16,7 +14,7 @@ export default async function ShiftDetailPage({ params }: any) {
 
   const shift = await (prisma.shift as any).findUnique({
     where: { id },
-    include: { meters: true, tankChecks: true, sales: true },
+    include: { meters: true, tankChecks: true, sales: true, shiftFuelPrices: { include: { fuelType: true } } },
   }) as any
 
   if (!shift) return <div className="p-6">ไม่พบผลัดงาน</div>
@@ -36,14 +34,7 @@ export default async function ShiftDetailPage({ params }: any) {
           <p className="text-sm text-gray-600">{new Date(shift.startTime).toLocaleString()} - {shift.endTime ? new Date(shift.endTime).toLocaleString() : 'กำลังทำงาน'}</p>
           {shift.description && <p className="mt-2 text-sm text-gray-700">{shift.description}</p>}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Edit className="mr-2 h-4 w-4" /> แก้ไข
-          </Button>
-          <Button variant="ghost" size="sm">
-            <CheckSquare className="mr-2 h-4 w-4" /> ปิดผลัดงาน
-          </Button>
-        </div>
+        {/* actions removed: Edit and Close Shift buttons intentionally omitted */}
       </div>
 
       {/* Stats */}
@@ -89,35 +80,22 @@ export default async function ShiftDetailPage({ params }: any) {
         </Card>
       </div>
 
+      {/* Stamped fuel prices */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ราคาน้ำมันประจำผลัด</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Client component handles edit/delete */}
+          <div id="shift-fuel-prices-root">
+            <ShiftFuelPrices prices={shift.shiftFuelPrices ?? []} />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>มิเตอร์</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Client component handles fetch/edit */}
-            <MeterManagement shiftId={shift.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>เทียบถัง</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TankComparison shiftId={shift.id} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>ขายสินค้า</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SalesManagement shiftId={shift.id} />
-          </CardContent>
-        </Card>
+      <div>
+        <ShiftTabs shiftId={shift.id} />
       </div>
     </div>
   )

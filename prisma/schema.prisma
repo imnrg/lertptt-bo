@@ -147,6 +147,8 @@ model FuelType {
 
   // inverse relation for shift meters
   shiftMeters   ShiftMeter[]
+  // inverse relation for stamped fuel prices per shift
+  shiftFuelPrices ShiftFuelPrice[]
 }
 
 model DebtorRecord {
@@ -230,6 +232,7 @@ model Shift {
   meters      ShiftMeter[]
   tankChecks  ShiftTankCheck[]
   sales       ShiftSale[]
+  shiftFuelPrices ShiftFuelPrice[]
 }
 
 model ShiftMeter {
@@ -300,6 +303,21 @@ model ShiftSale {
 
   @@index([shiftId])
   @@index([productId])
+}
+
+model ShiftFuelPrice {
+  id          String    @id @default(cuid())
+  shiftId     String
+  fuelTypeId  String
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  shift       Shift     @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  fuelType    FuelType  @relation(fields: [fuelTypeId], references: [id])
+
+  @@index([shiftId])
+  @@index([fuelTypeId])
 }
 
 // Enums

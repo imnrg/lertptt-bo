@@ -115,6 +115,30 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // Stamp current fuel prices per fuel type into ShiftFuelPrice
+      // For each fuel type, find the latest active FuelPrice ordered by effectiveDate desc
+      const fuelTypes = await (prisma as any).fuelType.findMany()
+      for (const ft of fuelTypes) {
+        const fp = await (prisma as any).fuelPrice.findFirst({
+          where: { fuelTypeId: ft.id, isActive: true },
+          orderBy: { effectiveDate: 'desc' }
+        })
+        if (fp) {
+          // Guard: prisma client may not have been regenerated after adding ShiftFuelPrice model
+          if ((prisma as any).shiftFuelPrice && typeof (prisma as any).shiftFuelPrice.create === 'function') {
+            await (prisma as any).shiftFuelPrice.create({
+              data: {
+                shiftId: shift.id,
+                fuelTypeId: ft.id,
+                price: fp.price,
+              }
+            })
+          } else {
+            console.warn('[shifts.POST] prisma.shiftFuelPrice.create not available — did you run prisma migrate/generate? Skipping stamp for now.')
+          }
+        }
+      }
+
       return NextResponse.json(shift, { status: 201 })
     } catch (err) {
       if (err instanceof ZodError) {
