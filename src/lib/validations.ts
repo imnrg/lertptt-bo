@@ -351,15 +351,69 @@ export const resetUserPasswordSchema = z.object({
   path: ["confirmPassword"],
 })
 
+// Shift Management schemas
+export const shiftSchema = z.object({
+  name: z.string().min(1, "กรุณากรอกชื่อผลัดงาน").max(200, "ชื่อผลัดงานยาวเกินไป"),
+  startTime: z.string().min(1, "กรุณาระบุเวลาเริ่มต้น"),
+  endTime: z.string().optional(),
+  description: z.string().max(1000, "คำอธิบายยาวเกินไป").optional().or(z.literal("")),
+})
+
+export const updateShiftSchema = shiftSchema.extend({
+  id: z.string().min(1, "รหัสผลัดงานไม่ถูกต้อง"),
+})
+
+export const shiftMeterSchema = z.object({
+  shiftId: z.string().min(1, "รหัสผลัดงานไม่ถูกต้อง"),
+  dispenserId: z.string().min(1, "กรุณาเลือกรหัสหัวจ่าย"),
+  tankId: z.string().min(1, "กรุณาเลือกรหัสถัง"),
+  fuelTypeId: z.string().min(1, "กรุณาเลือกรหัสประเภทเชื้อเพลิง"),
+  startMeter: z.number().min(0, "มิเตอร์เริ่มต้นต้องไม่น้อยกว่า 0"),
+  endMeter: z.number().optional(),
+  testWithdraw: z.number().min(0, "ค่าสำหรับการทดสอบต้องไม่น้อยกว่า 0").optional(),
+  useWithdraw: z.number().min(0, "ค่าสำหรับการใช้งานต้องไม่น้อยกว่า 0").optional(),
+})
+
+export const shiftTankCheckSchema = z.object({
+  shiftId: z.string().min(1, "รหัสผลัดงานไม่ถูกต้อง"),
+  tankId: z.string().min(1, "กรุณาเลือกรหัสถัง"),
+  firstMeasure: z.number().min(0, "ต้องระบุวัดครั้งแรก").optional(),
+  received: z.number().min(0, "จำนวนรับต้องไม่น้อยกว่า 0").optional(),
+  lastMeasure: z.number().optional(),
+})
+
+export const shiftSaleSchema = z.object({
+  shiftId: z.string().min(1, "รหัสผลัดงานไม่ถูกต้อง"),
+  debtorId: z.string().optional(),
+  customerCode: z.string().optional().or(z.literal("")),
+  plateNumber: z.string().optional().or(z.literal("")),
+  deliveryNote: z.string().optional().or(z.literal("")),
+  productId: z.string().optional(),
+  productName: z.string().min(1, "กรุณาระบุชื่อสินค้า"),
+  quantity: z.number().positive("จำนวนต้องมากกว่า 0"),
+  unitPrice: z.number().positive("ราคาต่อหน่วยต้องมากกว่า 0"),
+  discount: z.number().min(0).optional(),
+})
+
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type LoginFormData = z.infer<typeof loginSchema>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>
 export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>
 export type UpdateProfileFormData = z.infer<typeof updateProfileSchema>
+
+// Export missing user-related form types expected by components
+export type CreateUserFormData = z.infer<typeof createUserSchema>
+export type ResetUserPasswordFormData = z.infer<typeof resetUserPasswordSchema>
+
 export type FuelTypeFormData = z.infer<typeof fuelTypeSchema>
 export type TankFormData = z.infer<typeof tankSchema>
 export type DispenserFormData = z.infer<typeof dispenserSchema>
 export type ProductFormData = z.infer<typeof productSchema>
 export type ProductPriceFormData = z.infer<typeof productPriceSchema>
 export type BulkPriceUpdateFormData = z.infer<typeof bulkPriceUpdateSchema>
+export type ShiftFormData = z.infer<typeof shiftSchema>
+export type UpdateShiftFormData = z.infer<typeof updateShiftSchema>
+export type ShiftMeterFormData = z.infer<typeof shiftMeterSchema>
+export type ShiftTankCheckFormData = z.infer<typeof shiftTankCheckSchema>
+export type ShiftSaleFormData = z.infer<typeof shiftSaleSchema>

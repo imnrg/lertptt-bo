@@ -88,5 +88,4 @@ ALTER TABLE "DebtorFuelDiscount" ADD CONSTRAINT "DebtorFuelDiscount_fuelTypeId_f
 -- AddForeignKey
 ALTER TABLE "DebtorTransaction" ADD CONSTRAINT "DebtorTransaction_debtorId_fkey" FOREIGN KEY ("debtorId") REFERENCES "DebtorRecord"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "DebtorTransaction" ADD CONSTRAINT "DebtorTransaction_saleId_fkey" FOREIGN KEY ("saleId") REFERENCES "Sale"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Note: Removed foreign key constraint to "Sale"("id") from this migration because the "Sale" table is not present in the migration set. If "Sale" is required, create its migration before applying this one.

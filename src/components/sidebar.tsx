@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Calendar
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,7 @@ const navigation = [
     ]
   },
   { name: 'จัดการสินค้า', href: '/products', icon: Package },
+  { name: 'จัดการผลัดงาน', href: '/shifts', icon: Calendar },
   { name: 'จัดการลูกหนี้', href: '/debtors', icon: Users },
   { name: 'จัดการผู้ใช้', href: '/users', icon: Users },
   { name: 'ตั้งค่า', href: '/settings', icon: Settings },
