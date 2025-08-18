@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { AlertModal } from '@/components/ui/alert-modal'
 import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { formatNumber } from '@/lib/utils'
 
 interface TankCheck {
   id: string
@@ -16,9 +19,23 @@ interface TankCheck {
   lastMeasure?: number
 }
 
+// added: meter interface to compute sold per tank
+interface ShiftMeter {
+  id: string
+  tankId: string
+  startMeter: number
+  endMeter?: number | null
+  testWithdraw?: number
+  useWithdraw?: number
+  // include tank relation returned by API
+  tank?: { id: string; name: string } | null
+}
+
 export default function TankComparison({ shiftId }: { shiftId: string }) {
   const { alertState, loadingState, showAlert, showLoading, hideLoading, closeAlert } = useAlert()
+  const router = useRouter()
   const [checks, setChecks] = useState<TankCheck[]>([])
+  const [meters, setMeters] = useState<ShiftMeter[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchChecks = async () => {
@@ -36,7 +53,23 @@ export default function TankComparison({ shiftId }: { shiftId: string }) {
     }
   }
 
-  useEffect(() => { fetchChecks() }, [shiftId])
+  // fetch meters for the shift so we can compute sold per tank
+  const fetchMeters = async () => {
+    try {
+      const res = await fetch(`/api/shifts/meters?shiftId=${shiftId}`)
+      if (!res.ok) throw new Error('Failed to fetch meters')
+      const data = await res.json()
+      setMeters(data)
+    } catch (err) {
+      console.error(err)
+      setMeters([])
+    }
+  }
+
+  useEffect(() => {
+    fetchChecks()
+    fetchMeters()
+  }, [shiftId])
 
   const handleUpdate = async (c: TankCheck) => {
     try {
@@ -51,8 +84,14 @@ export default function TankComparison({ shiftId }: { shiftId: string }) {
         showAlert('อัปเดตไม่สำเร็จ', 'error')
         return
       }
-      showAlert('อัปเดตการเทียบถังสำเร็จ', 'success')
-      fetchChecks()
+
+      // use updated record from server to update local table immediately
+      const updated = await res.json()
+      setChecks((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+
+      // also refresh meters in case something changed and refresh server components
+      fetchMeters()
+      router.refresh()
     } catch (err) {
       console.error(err)
       hideLoading()
@@ -77,35 +116,90 @@ export default function TankComparison({ shiftId }: { shiftId: string }) {
       <LoadingModal loadingState={loadingState} />
 
       {loading ? <p className="text-gray-600">กำลังโหลดเทียบถัง...</p> : (
-        <div className="space-y-3">
-          {checks.map((c) => {
-            const remaining = (c.firstMeasure ?? 0) + (c.received ?? 0) - (c.sold ?? 0)
-            const diff = remaining - (c.lastMeasure ?? remaining)
-            const diffPercent = remaining ? (diff / remaining) * 100 : 0
-            return (
-              <div key={c.id} className="p-3 border rounded">
-                <div className="flex justify-between">
-                  <div>
-                    <div className="text-sm">ถัง: {c.tankId}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm">เริ่ม: {c.firstMeasure}</div>
-                    <div className="text-sm">รับเพิ่ม: {c.received ?? 0}</div>
-                    <div className="text-sm">ขาย: {c.sold ?? 0}</div>
-                    <div className="text-sm">คงเหลือ: {remaining}</div>
-                    <div className="text-sm">วัดครั้งสุดท้าย: {c.lastMeasure ?? '-'}</div>
-                    <div className="text-sm">ส่วนต่าง: {diff}</div>
-                    <div className="text-sm">% ส่วนต่าง: {diffPercent.toFixed(2)}%</div>
-                  </div>
-                </div>
+        <div>
+          {checks.length === 0 ? (
+            <p className="text-gray-600">ยังไม่มีการเทียบถังในผลัดนี้</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ถัง</TableHead>
+                  <TableHead>เริ่ม</TableHead>
+                  <TableHead>รับเพิ่ม</TableHead>
+                  <TableHead>ขาย</TableHead>
+                  <TableHead>คงเหลือ</TableHead>
+                  <TableHead>วัดครั้งสุดท้าย</TableHead>
+                  <TableHead>ส่วนต่าง</TableHead>
+                  <TableHead>% ส่วนต่าง</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {checks.map((c) => {
+                  // compute sold using meters for this tank
+                  const soldFromMeters = meters
+                    .filter((m) => m.tankId === c.tankId)
+                    .reduce((acc, m) => {
+                      const start = Number(m.startMeter ?? 0)
+                      const end = m.endMeter == null ? start : Number(m.endMeter)
+                      const test = Number(m.testWithdraw ?? 0)
+                      const use = Number(m.useWithdraw ?? 0)
+                      const sold = Math.max(0, end - start - test - use)
+                      return acc + sold
+                    }, 0)
 
-                <div className="mt-2 flex gap-2">
-                  <Input defaultValue={c.received ?? ''} onBlur={(e: unknown) => { const target = e as FocusEvent & { target: HTMLInputElement }; handleUpdate({ ...c, received: Number(target.target.value) }) }} placeholder="รับเพิ่ม" className="w-32" />
-                  <Input defaultValue={c.lastMeasure ?? ''} onBlur={(e: unknown) => { const target = e as FocusEvent & { target: HTMLInputElement }; handleUpdate({ ...c, lastMeasure: Number(target.target.value) }) }} placeholder="วัดครั้งสุดท้าย" className="w-32" />
-                </div>
-              </div>
-            )
-          })}
+                  // prefer tank name from meters' included tank relation
+                  const tankName = meters.find((m) => m.tankId === c.tankId)?.tank?.name ?? c.tankId
+
+                  const remaining = (c.firstMeasure ?? 0) + (c.received ?? 0) - (soldFromMeters ?? 0)
+                  const diff = remaining - (c.lastMeasure ?? remaining)
+                  const diffPercent = remaining ? (diff / remaining) * 100 : 0
+
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell>{tankName}</TableCell>
+                      <TableCell>{formatNumber(c.firstMeasure)}</TableCell>
+                      <TableCell>
+                        <Input
+                          defaultValue={c.received ?? ''}
+                          onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                            const v = e.target.value
+                            const parsed = v === '' ? undefined : Number(v)
+                            if (parsed !== undefined && !Number.isFinite(parsed)) {
+                              showAlert('กรุณากรอกตัวเลขที่ถูกต้อง', 'error')
+                              return
+                            }
+                            handleUpdate({ ...c, received: parsed })
+                          }}
+                          placeholder="รับเพิ่ม"
+                          className="w-28"
+                        />
+                      </TableCell>
+                      <TableCell>{formatNumber(soldFromMeters)}</TableCell>
+                      <TableCell>{formatNumber(remaining)}</TableCell>
+                      <TableCell>
+                        <Input
+                          defaultValue={c.lastMeasure ?? ''}
+                          onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                            const v = e.target.value
+                            const parsed = v === '' ? undefined : Number(v)
+                            if (parsed !== undefined && !Number.isFinite(parsed)) {
+                              showAlert('กรุณากรอกตัวเลขที่ถูกต้อง', 'error')
+                              return
+                            }
+                            handleUpdate({ ...c, lastMeasure: parsed })
+                          }}
+                          placeholder="วัดครั้งสุดท้าย"
+                          className="w-28"
+                        />
+                      </TableCell>
+                      <TableCell>{formatNumber(diff)}</TableCell>
+                      <TableCell>{formatNumber(diffPercent, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </div>
       )}
     </div>

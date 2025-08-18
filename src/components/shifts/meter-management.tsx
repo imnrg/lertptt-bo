@@ -7,6 +7,7 @@ import { LoadingModal } from '@/components/ui/loading-modal'
 import { useAlert } from '@/lib/use-alert'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { useRouter } from 'next/navigation'
+import { formatNumber } from '@/lib/utils'
 
 interface ShiftMeter {
   id: string
@@ -121,7 +122,7 @@ export default function MeterManagement({ shiftId }: { shiftId: string }) {
                       <TableCell>{m.dispenser?.name ?? m.dispenserId}</TableCell>
                       <TableCell>{m.tank?.name ?? m.tankId}</TableCell>
                       <TableCell>{m.fuelType?.name ?? m.fuelTypeId}</TableCell>
-                      <TableCell>{m.startMeter}</TableCell>
+                      <TableCell>{formatNumber(m.startMeter)}</TableCell>
                       <TableCell>
                         <Input
                           defaultValue={m.endMeter ?? ''}
@@ -158,8 +159,8 @@ export default function MeterManagement({ shiftId }: { shiftId: string }) {
                           className="w-28"
                         />
                       </TableCell>
-                      <TableCell>{sold}</TableCell>
-                      <TableCell>฿{amount.toFixed(2)}</TableCell>
+                      <TableCell>{formatNumber(sold)}</TableCell>
+                      <TableCell>฿{formatNumber(amount)}</TableCell>
                     </TableRow>
                   )
                 })}

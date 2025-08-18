@@ -290,3 +290,16 @@ export function safeNumberConversion(value: string): number {
   if (!value || !isValidNumber(value)) return 0
   return Number(value)
 }
+
+/**
+ * Format a number with locale-aware thousand separators and fixed decimal places.
+ * Returns empty string for null/undefined/NaN to make it safe for UI display.
+ */
+export function formatNumber(
+  value?: number | null,
+  options?: { locale?: string; minimumFractionDigits?: number; maximumFractionDigits?: number }
+): string {
+  if (value == null || Number.isNaN(Number(value))) return ''
+  const { locale = 'th-TH', minimumFractionDigits = 2, maximumFractionDigits = 2 } = options || {}
+  return new Intl.NumberFormat(locale, { minimumFractionDigits, maximumFractionDigits }).format(Number(value))
+}
